@@ -19,14 +19,14 @@ export async function configure(command: ConfigureCommand) {
   const codemods = await command.createCodemods()
   const timestamp = Date.now()
   const stubs = [
-    'config.stub',
-    'email_verification_model.stub',
-    'password_reset_model.stub',
-    'email_verification_controller.stub',
-    'password_reset_controller.stub',
-    'add_email_verified_at_to_users_table.stub',
-    'create_email_verifications_table.stub',
-    'create_password_resets_table.stub',
+    'config/auth_mail.stub',
+    'models/email_verification.stub',
+    'models/password_reset.stub',
+    'controllers/email_verification_controller.stub',
+    'controllers/password_reset_controller.stub',
+    'migrations/add_email_verified_at_to_users_table.stub',
+    'migrations/create_email_verifications_table.stub',
+    'migrations/create_password_resets_table.stub',
   ]
   for (const stub of stubs) {
     await codemods.makeUsingStub(stubsRoot, stub, { timestamp })

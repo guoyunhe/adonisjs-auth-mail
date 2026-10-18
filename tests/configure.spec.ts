@@ -18,5 +18,5 @@ test('configure generates all stubs and env', async () => {
   })
   assert.equal(made.length, 8)
   assert.ok(env)
-  for (const s of made) assert.ok(existsSync(join(stubsRoot, s)))
+  for (const s of made) assert.ok(existsSync(join(stubsRoot, s)), `Missing stub: ${s}`)
 })
