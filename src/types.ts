@@ -1,0 +1,42 @@
+/**
+ * Minimal shape of the user (e.g. a Lucid model compatible with
+ * @adonisjs/auth) that this package works with.
+ */
+export interface MailableUser {
+  id: string | number
+  email: string
+  password?: string | null
+  emailVerifiedAt?: unknown
+}
+
+/**
+ * Minimal shape of the @adonisjs/mail service (`mail.send`).
+ */
+export interface MailSender {
+  send(callback: (message: MailMessage) => void | Promise<void>): Promise<unknown>
+}
+
+export interface MailMessage {
+  to(address: string): this
+  from?(address: string): this
+  subject(subject: string): this
+  text?(content: string): this
+  html?(content: string): this
+}
+
+export interface AuthMailConfig {
+  /** Secret used to sign tokens, usually `env.get('APP_KEY')` */
+  secret: string
+  /** Mail service, usually `import mail from '@adonisjs/mail/services/main'` */
+  mailer: MailSender
+  /** Builds the link sent in the email. Receives the signed token. */
+  verificationUrl: (token: string, user: MailableUser) => string
+  resetUrl: (token: string, user: MailableUser) => string
+  /** Token lifetimes in seconds. Defaults: 24h verification, 1h reset */
+  verificationExpiresIn?: number
+  resetExpiresIn?: number
+  from?: string
+  /** Customise email contents */
+  verificationMessage?: (message: MailMessage, url: string, user: MailableUser) => void
+  resetMessage?: (message: MailMessage, url: string, user: MailableUser) => void
+}
