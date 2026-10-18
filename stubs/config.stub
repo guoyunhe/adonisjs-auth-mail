@@ -1,3 +1,6 @@
+{{{
+  exports({ to: app.configPath('auth_mail.ts') })
+}}}
 import env from '#start/env'
 import mail from '@adonisjs/mail/services/main'
 import { defineConfig } from 'adonisjs-auth-mail'

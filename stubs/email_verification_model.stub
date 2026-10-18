@@ -1,3 +1,6 @@
+{{{
+  exports({ to: app.modelsPath('email_verification.ts') })
+}}}
 import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'

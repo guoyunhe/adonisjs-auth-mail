@@ -1,3 +1,6 @@
+{{{
+  exports({ to: app.migrationsPath((timestamp + 1) + '_create_email_verifications_table.ts') })
+}}}
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
