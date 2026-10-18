@@ -157,3 +157,20 @@ router.get('/account', [AccountController, 'show'])
 Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
 deployment. The `verified` middleware returns 403 for authenticated users without a verified email;
 customize it to redirect browser users to your verification notice page if needed.
+
+## Configuration
+
+Edit `config/auth_mail.ts` after installation:
+
+| Option | Purpose |
+| --- | --- |
+| `secret` | Signs verification and reset tokens. Keep it set to `APP_KEY`; changing it invalidates outstanding links. |
+| `mailer`, `from` | Select the configured Adonis mailer and sender address. |
+| `verificationExpiresIn`, `resetExpiresIn` | Link lifetimes in seconds (default: 24 hours and 1 hour). |
+| `verificationUrl`, `resetUrl` | Build the links included in the messages. Point them to the matching app routes or your frontend pages. |
+| `verificationMessage`, `resetMessage` | Customize subjects and select Edge HTML/text views, for example based on `user.locale`. |
+| `resetStore` | Persists reset-token hashes and atomically consumes them. Keep the generated Lucid implementation for replay protection. |
+
+The default verification link opens the generated `GET /email/verify/:token` action. The generated
+`resetUrl` uses `/password/reset/:token`; add a GET password-entry page there or point `resetUrl` to
+your frontend page. Submit the new password to `POST /password/reset/:token`.
