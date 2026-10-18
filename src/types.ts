@@ -7,6 +7,7 @@ export interface MailableUser {
   email: string
   password?: string | null
   emailVerifiedAt?: unknown
+  locale?: string
 }
 
 /**
@@ -24,23 +25,7 @@ export interface MailMessage {
   html?(content: string): this
 }
 
-/** One row per verification email sent (the `email_verifications` table). */
-export interface EmailVerificationRecord {
-  userId: string | number
-  email: string
-  tokenHash: string
-  sentAt: Date
-  expiresAt: Date
-  verifiedAt: Date | null
-}
-
-/** Persistence for sent verification messages, e.g. backed by a Lucid model. */
-export interface EmailVerificationStore {
-  create(record: EmailVerificationRecord): Promise<void>
-  markVerified(tokenHash: string, verifiedAt: Date): Promise<void>
-}
-
-/** One row per password reset email sent (the `password_resets` table). */
+/** One row per successfully accepted password reset email (the `password_resets` table). */
 export interface PasswordResetRecord {
   userId: string | number
   email: string
@@ -52,14 +37,12 @@ export interface PasswordResetRecord {
 
 export interface PasswordResetStore {
   create(record: PasswordResetRecord): Promise<void>
-  markUsed(tokenHash: string, usedAt: Date): Promise<void>
+  consume(tokenHash: string, usedAt: Date): Promise<boolean>
 }
 
 export interface AuthMailConfig {
   /** Tracks sent password reset emails */
   resetStore?: PasswordResetStore
-  /** Tracks sent verification emails and their verification status */
-  verificationStore?: EmailVerificationStore
   /** Secret used to sign tokens, usually `env.get('APP_KEY')` */
   secret: string
   /** Mail service, usually `import mail from '@adonisjs/mail/services/main'` */
@@ -71,7 +54,7 @@ export interface AuthMailConfig {
   verificationExpiresIn?: number
   resetExpiresIn?: number
   from?: string
-  /** Customise email contents */
+  /** Customise email contents, including localization based on user.locale. */
   verificationMessage?: (message: MailMessage, url: string, user: MailableUser) => void
   resetMessage?: (message: MailMessage, url: string, user: MailableUser) => void
 }

@@ -7,6 +7,10 @@ interface ConfigureCommand {
     makeUsingStub(stubsRoot: string, stubPath: string, data: Record<string, unknown>): Promise<unknown>
     defineEnvVariables(vars: Record<string, string | number | boolean>): Promise<void>
     defineEnvValidations(validations: { variables: Record<string, string>; leadingComment?: string }): Promise<void>
+    registerMiddleware(
+      stack: 'server' | 'router' | 'named',
+      middleware: { name: string; path: string }[]
+    ): Promise<void>
   }>
 }
 
@@ -20,12 +24,10 @@ export async function configure(command: ConfigureCommand) {
   const timestamp = Date.now()
   const stubs = [
     'config/auth_mail.stub',
-    'models/email_verification.stub',
     'models/password_reset.stub',
     'controllers/email_verification_controller.stub',
     'controllers/password_reset_controller.stub',
     'migrations/add_email_verified_at_to_users_table.stub',
-    'migrations/create_email_verifications_table.stub',
     'migrations/create_password_resets_table.stub',
   ]
   for (const stub of stubs) {
@@ -37,4 +39,7 @@ export async function configure(command: ConfigureCommand) {
     leadingComment: 'Variables for adonisjs-auth-mail',
     variables: { APP_URL: 'Env.schema.string()', MAIL_FROM: 'Env.schema.string()' },
   })
+  await codemods.registerMiddleware('named', [
+    { name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
+  ])
 }

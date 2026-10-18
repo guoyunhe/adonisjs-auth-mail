@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 
 export type TokenPurpose = 'verify-email' | 'reset-password'
 
@@ -15,7 +15,7 @@ export function createToken(
   expiresIn: number
 ): string {
   const payload = Buffer.from(
-    JSON.stringify({ p: purpose, u: String(userId), e: Date.now() + expiresIn * 1000 })
+    JSON.stringify({ p: purpose, u: String(userId), e: Date.now() + expiresIn * 1000, n: randomUUID() })
   ).toString('base64url')
   return `${payload}.${sign(secret, payload, binding)}`
 }

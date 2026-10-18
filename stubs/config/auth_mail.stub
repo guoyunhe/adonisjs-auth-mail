@@ -4,7 +4,6 @@
 import env from '#start/env'
 import mail from '@adonisjs/mail/services/main'
 import { defineConfig } from 'adonisjs-auth-mail'
-import EmailVerification from '#models/email_verification'
 import PasswordReset from '#models/password_reset'
 
 const authMailConfig = defineConfig({
@@ -20,21 +19,17 @@ const authMailConfig = defineConfig({
   verificationUrl: (token) => `${env.get('APP_URL')}/email/verify/${token}`,
   resetUrl: (token) => `${env.get('APP_URL')}/password/reset/${token}`,
 
-  /** Track sent messages */
-  verificationStore: {
-    async create(r) {
-      await EmailVerification.create(r as any)
-    },
-    async markVerified(tokenHash, at) {
-      await EmailVerification.query().where('tokenHash', tokenHash).update({ verifiedAt: at })
-    },
-  },
   resetStore: {
     async create(r) {
       await PasswordReset.create(r as any)
     },
-    async markUsed(tokenHash, at) {
-      await PasswordReset.query().where('tokenHash', tokenHash).update({ usedAt: at })
+    async consume(tokenHash, at) {
+      const updated = await PasswordReset.query()
+        .where('tokenHash', tokenHash)
+        .whereNull('usedAt')
+        .where('expiresAt', '>', at)
+        .update({ usedAt: at })
+      return updated > 0
     },
   },
 })

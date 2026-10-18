@@ -1,5 +1,8 @@
 export { AuthMail } from './auth_mail.js'
 export { createToken, verifyToken, readUserId } from './token.js'
+export { MustVerifyEmail } from './must_verify_email.js'
+export type { MustVerifyEmailUser } from './must_verify_email.js'
+export { default as VerifiedMiddleware } from './verified_middleware.js'
 export type * from './types.js'
 export { defineConfig } from './define_config.js'
 export { configure, stubsRoot } from './configure.js'

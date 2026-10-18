@@ -16,15 +16,6 @@ export class AuthMail<User extends MailableUser = MailableUser> {
   async sendVerification(user: User) {
     const expiresIn = this.config.verificationExpiresIn ?? 86400
     const token = createToken(this.config.secret, 'verify-email', user.id, user.email, expiresIn)
-    const sentAt = new Date()
-    await this.config.verificationStore?.create({
-      userId: user.id,
-      email: user.email,
-      tokenHash: hashToken(token),
-      sentAt,
-      expiresAt: new Date(sentAt.getTime() + expiresIn * 1000),
-      verifiedAt: null,
-    })
     const url = this.config.verificationUrl(token, user)
     await this.config.mailer.send((message) => {
       message.to(user.email)
@@ -35,13 +26,19 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     })
   }
 
-  /** Returns the verified user, or null when the token is invalid/expired. */
-  async verifyEmail(token: string, markVerified: (user: User) => Promise<void>): Promise<User | null> {
+  /** Returns the user, or null when the token is invalid, expired, or the email is already verified. */
+  async verifyEmail(
+    token: string,
+    markEmailAsVerified: (user: User) => Promise<void>
+  ): Promise<User | null> {
     const id = readUserId(token, 'verify-email')
     const user = id ? await this.findUser(id) : null
-    if (!user || !verifyToken(this.config.secret, 'verify-email', token, user.email)) return null
-    await markVerified(user)
-    await this.config.verificationStore?.markVerified(hashToken(token), new Date())
+    if (
+      !user ||
+      user.emailVerifiedAt ||
+      !verifyToken(this.config.secret, 'verify-email', token, user.email)
+    ) return null
+    await markEmailAsVerified(user)
     return user
   }
 
@@ -50,16 +47,8 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     const user = await findByEmail(email)
     if (!user) return
     const expiresIn = this.config.resetExpiresIn ?? 3600
+    const issuedAt = new Date()
     const token = createToken(this.config.secret, 'reset-password', user.id, user.password ?? '', expiresIn)
-    const sentAt = new Date()
-    await this.config.resetStore?.create({
-      userId: user.id,
-      email: user.email,
-      tokenHash: hashToken(token),
-      sentAt,
-      expiresAt: new Date(sentAt.getTime() + expiresIn * 1000),
-      usedAt: null,
-    })
     const url = this.config.resetUrl(token, user)
     await this.config.mailer.send((message) => {
       message.to(user.email)
@@ -68,11 +57,20 @@ export class AuthMail<User extends MailableUser = MailableUser> {
       message.subject('Reset your password')
       message.text?.(`Reset your password by visiting: ${url}`)
     })
+    const sentAt = new Date()
+    await this.config.resetStore?.create({
+      userId: user.id,
+      email: user.email,
+      tokenHash: hashToken(token),
+      sentAt,
+      expiresAt: new Date(issuedAt.getTime() + expiresIn * 1000),
+      usedAt: null,
+    })
   }
 
   /**
-   * Tokens are bound to the current password hash, so they are single-use:
-   * once `setPassword` stores the new password the token stops working.
+   * With a reset store, the token is atomically consumed before `setPassword`
+   * runs. Without a store, changing the password hash invalidates the token.
    */
   async resetPassword(token: string, setPassword: (user: User) => Promise<void>): Promise<User | null> {
     const id = readUserId(token, 'reset-password')
@@ -80,8 +78,11 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     if (!user || !verifyToken(this.config.secret, 'reset-password', token, user.password ?? '')) {
       return null
     }
+    if (this.config.resetStore) {
+      const consumed = await this.config.resetStore.consume(hashToken(token), new Date())
+      if (!consumed) return null
+    }
     await setPassword(user)
-    await this.config.resetStore?.markUsed(hashToken(token), new Date())
     return user
   }
 }
