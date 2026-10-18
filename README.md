@@ -40,3 +40,12 @@ Additional stubs: `create_password_resets_table.stub` + `password_reset_model.st
 emails via `resetStore`), `email_verification_controller.stub` and `password_reset_controller.stub`
 (copy to `app/controllers/`, then register routes), and `config.stub`, to be copied to
 `config/auth_mail.ts`. It uses `defineConfig` and wires both stores to the Lucid models.
+
+## Installation
+
+```sh
+node ace add adonisjs-auth-mail
+```
+
+This copies the config, models, controllers and migrations into your app (see stubs above) and
+defines the `APP_URL` and `MAIL_FROM` env variables. Then register routes and run `node ace migration:run`.
