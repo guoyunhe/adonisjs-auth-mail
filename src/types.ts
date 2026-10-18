@@ -40,7 +40,24 @@ export interface EmailVerificationStore {
   markVerified(tokenHash: string, verifiedAt: Date): Promise<void>
 }
 
+/** One row per password reset email sent (the `password_resets` table). */
+export interface PasswordResetRecord {
+  userId: string | number
+  email: string
+  tokenHash: string
+  sentAt: Date
+  expiresAt: Date
+  usedAt: Date | null
+}
+
+export interface PasswordResetStore {
+  create(record: PasswordResetRecord): Promise<void>
+  markUsed(tokenHash: string, usedAt: Date): Promise<void>
+}
+
 export interface AuthMailConfig {
+  /** Tracks sent password reset emails */
+  resetStore?: PasswordResetStore
   /** Tracks sent verification emails and their verification status */
   verificationStore?: EmailVerificationStore
   /** Secret used to sign tokens, usually `env.get('APP_KEY')` */

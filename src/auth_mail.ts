@@ -49,13 +49,17 @@ export class AuthMail<User extends MailableUser = MailableUser> {
   async sendPasswordReset(email: string, findByEmail: (email: string) => Promise<User | null>) {
     const user = await findByEmail(email)
     if (!user) return
-    const token = createToken(
-      this.config.secret,
-      'reset-password',
-      user.id,
-      user.password ?? '',
-      this.config.resetExpiresIn ?? 3600
-    )
+    const expiresIn = this.config.resetExpiresIn ?? 3600
+    const token = createToken(this.config.secret, 'reset-password', user.id, user.password ?? '', expiresIn)
+    const sentAt = new Date()
+    await this.config.resetStore?.create({
+      userId: user.id,
+      email: user.email,
+      tokenHash: hashToken(token),
+      sentAt,
+      expiresAt: new Date(sentAt.getTime() + expiresIn * 1000),
+      usedAt: null,
+    })
     const url = this.config.resetUrl(token, user)
     await this.config.mailer.send((message) => {
       message.to(user.email)
@@ -77,6 +81,7 @@ export class AuthMail<User extends MailableUser = MailableUser> {
       return null
     }
     await setPassword(user)
+    await this.config.resetStore?.markUsed(hashToken(token), new Date())
     return user
   }
 }

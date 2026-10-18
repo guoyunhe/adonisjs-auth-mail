@@ -56,3 +56,21 @@ test('verification store tracks sent messages', async () => {
   assert.equal(rows[0].verifiedAt, null)
   assert.equal(sent.length, 0)
 })
+
+test('reset store tracks sent and used', async () => {
+  const { user } = setup()
+  const rows: any[] = []
+  const am = new AuthMail(
+    {
+      secret: 's', mailer: { async send() {} }, verificationUrl: (t) => t, resetUrl: (t) => t,
+      resetStore: {
+        async create(r) { rows.push(r) },
+        async markUsed(h, at) { rows.find((r) => r.tokenHash === h).usedAt = at },
+      },
+    },
+    async () => user
+  )
+  await am.sendPasswordReset(user.email, async () => user)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].usedAt, null)
+})

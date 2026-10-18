@@ -33,3 +33,10 @@ Copy the stubs in `stubs/` into your app: `add_email_verified_at_to_users_table.
 `email_verification_model.stub` create the `email_verifications` table/model that tracks each sent
 message (token hash, sent/expiry/verified timestamps). Pass `verificationStore` (with `create` and
 `markVerified`, e.g. backed by that model) in the config to record them.
+
+## Password resets, controllers and config
+
+Additional stubs: `create_password_resets_table.stub` + `password_reset_model.stub` (tracks sent reset
+emails via `resetStore`), `email_verification_controller.stub` and `password_reset_controller.stub`
+(copy to `app/controllers/`, then register routes), and `config.stub`, to be copied to
+`config/auth_mail.ts`. It uses `defineConfig` and wires both stores to the Lucid models.

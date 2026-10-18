@@ -1,0 +1,27 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
+import User from '#models/user'
+import authMailConfig from '#config/auth_mail'
+import { AuthMail } from 'adonisjs-auth-mail'
+
+const authMail = new AuthMail(authMailConfig, (id) => User.find(id))
+
+export default class EmailVerificationController {
+  /** POST /email/verify/send (authenticated) */
+  async send({ auth, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    if (user.emailVerifiedAt) return response.badRequest({ message: 'Already verified' })
+    await authMail.sendVerification(user)
+    return response.accepted({ message: 'Verification email sent' })
+  }
+
+  /** GET /email/verify/:token */
+  async verify({ params, response }: HttpContext) {
+    const user = await authMail.verifyEmail(params.token, async (u) => {
+      u.emailVerifiedAt = DateTime.now()
+      await u.save()
+    })
+    if (!user) return response.badRequest({ message: 'Invalid or expired token' })
+    return { message: 'Email verified' }
+  }
+}
