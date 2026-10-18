@@ -128,28 +128,65 @@ export const authMailThrottle = limiter.define('auth-mail', (ctx) =>
 )
 ```
 
-Apply it to the routes:
+Use the limiter on public endpoints that send mail or change credentials. Route configuration is
+split by feature below.
+
+Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
+deployment.
+
+## Email Verification
+
+Register the generated send and verify actions in `start/routes.ts`. Sending a verification email
+requires an authenticated user; the link target from `emailVerification.path` must resolve to the
+verification action. You may protect routes that require a verified account with the named
+`verified` middleware:
 
 ```ts
-// start/routes.ts
 import router from '@adonisjs/core/services/router'
 import EmailVerificationController from '#controllers/email_verification_controller'
-import PasswordResetController from '#controllers/password_reset_controller'
+import AccountController from '#controllers/account_controller'
 import { middleware } from '#start/kernel'
 import { authMailThrottle } from '#start/limiter'
 
 router.post('/email/verify/send', [EmailVerificationController, 'send'])
   .use([middleware.auth(), authMailThrottle])
-router.get('/email/verify/:token', [EmailVerificationController, 'verify']).use(authMailThrottle)
-router.post('/password/forgot', [PasswordResetController, 'forgot']).use(authMailThrottle)
-router.post('/password/reset', [PasswordResetController, 'reset']).use(authMailThrottle)
+router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
+  .use(authMailThrottle)
+
 router.get('/account', [AccountController, 'show'])
   .use([middleware.auth(), middleware.verified()])
 ```
 
-Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
-deployment. The `verified` middleware returns 403 for authenticated users without a verified email;
-customize it to redirect browser users to your verification notice page if needed.
+The generated verification URL is `GET /email/verify/:token`. The verification route does not
+require an authenticated session because the signed token identifies and verifies its owner.
+`verified` returns 403 for authenticated users without a verified email; customize it to redirect
+browser users to your verification notice page if needed.
+
+## Password Reset
+
+Register the generated forgot-password and reset actions as public routes protected by a rate
+limiter. Also provide a GET page for the password-entry form: the generated email link targets
+`/password/reset/:token?email=...`, while the generated controller handles the POST submission.
+Keep both `email` and `token` when rendering/submitting the form.
+
+```ts
+import router from '@adonisjs/core/services/router'
+import PasswordResetController from '#controllers/password_reset_controller'
+import PasswordResetPageController from '#controllers/password_reset_page_controller'
+import { authMailThrottle } from '#start/limiter'
+
+router.post('/password/forgot', [PasswordResetController, 'forgot'])
+  .use(authMailThrottle)
+router.get('/password/reset/:token', [PasswordResetPageController, 'show'])
+  .use(authMailThrottle)
+router.post('/password/reset', [PasswordResetController, 'reset'])
+  .use(authMailThrottle)
+```
+
+`PasswordResetPageController` is application-specific; create a form or frontend route that reads
+the `token` route parameter and `email` query parameter, then submits `email`, `token` and `password`
+to `POST /password/reset`. The reset controller validates the request and updates the user's
+password after the token has been atomically consumed.
 
 ## Configuration
 
@@ -167,7 +204,5 @@ mailer and sender address in `config/mail.ts` as usual; no mailer or sender fiel
 `config/auth_mail.ts`.
 
 The default verification link opens the generated `GET /email/verify/:token` action. The generated
-reset URL points to `/password/reset/:token?email=...`; add a GET password-entry page there or set
-`passwordReset.path` to your frontend page, keeping the `:token` placeholder. Submit `email`,
-`token` and `password` to
-`POST /password/reset`.
+reset URL points to `/password/reset/:token?email=...`; set `passwordReset.path` to your frontend
+page if it uses another route, keeping the `:token` placeholder.
