@@ -7,21 +7,23 @@ import { configure, stubsRoot } from '../src/index.js'
 test('configure generates all stubs and env', async () => {
   const made: string[] = []
   const middleware: { stack: string; name: string; path: string }[] = []
-  let env = false
+  let envVariables: Record<string, string | number | boolean> = {}
+  let envValidations: Record<string, string> = {}
   await configure({
     async createCodemods() {
       return {
         async makeUsingStub(_root: string, stub: string) { made.push(stub) },
-        async defineEnvVariables() { env = true },
-        async defineEnvValidations() {},
+        async defineEnvVariables(variables) { envVariables = variables },
+        async defineEnvValidations({ variables }) { envValidations = variables },
         async registerMiddleware(stack, entries) {
           for (const entry of entries) middleware.push({ stack, ...entry })
         },
       }
     },
   })
-  assert.equal(made.length, 10)
-  assert.ok(env)
+  assert.equal(made.length, 12)
+  assert.deepEqual(envVariables, { APP_URL: 'http://localhost:3333' })
+  assert.deepEqual(envValidations, { APP_URL: 'Env.schema.string()' })
   for (const s of made) assert.ok(existsSync(join(stubsRoot, s)), `Missing stub: ${s}`)
   assert.ok(!made.some((s) => s.includes('email_verifications')))
   assert.ok(!made.some((s) => s.includes('email_verification.stub')))
@@ -29,6 +31,8 @@ test('configure generates all stubs and env', async () => {
   assert.ok(made.includes('views/mails/verify_email_text.stub'))
   assert.ok(made.includes('views/mails/reset_password.stub'))
   assert.ok(made.includes('views/mails/reset_password_text.stub'))
+  assert.ok(made.includes('validators/forgot_password_validator.stub'))
+  assert.ok(made.includes('validators/reset_password_validator.stub'))
   assert.deepEqual(middleware, [
     { stack: 'named', name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
   ])
@@ -40,4 +44,18 @@ test('password reset migration keeps only the minimal token columns plus id', ()
     ([, column]) => column
   )
   assert.deepEqual(columns, ['id', 'email', 'token', 'created_at'])
+})
+
+test('auth mail config groups email verification and password reset options', () => {
+  const config = readFileSync(join(stubsRoot, 'config/auth_mail.stub'), 'utf8')
+  assert.match(config, /^  emailVerification: \{/m)
+  assert.match(config, /^  passwordReset: \{/m)
+  assert.doesNotMatch(config, /^\s+(?:mailer|from):/m)
+  assert.match(config, /^    path: '\/email\/verify\/:token',$/m)
+  assert.match(config, /^    path: '\/password\/reset\/:token',$/m)
+  assert.match(config, /^      htmlView: 'mails\/reset_password',$/m)
+  assert.doesNotMatch(config, /^\s+(?:url|message)\s*[:(]/m)
+  assert.doesNotMatch(config, /^\s+store:/m)
+  assert.doesNotMatch(config, /^\s+userModel:/m)
+  assert.doesNotMatch(config, /^  (?:verificationExpiresIn|resetExpiresIn|resetThrottle|resetStore):/m)
 })

@@ -1,6 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 
-export type TokenPurpose = 'verify-email' | 'reset-password'
+export type TokenPurpose = 'verify-email'
 
 /**
  * Creates a stateless signed token: `<base64url payload>.<signature>`.

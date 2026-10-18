@@ -2,47 +2,57 @@
   exports({ to: app.configPath('auth_mail.ts') })
 }}}
 import env from '#start/env'
-import mail from '@adonisjs/mail/services/main'
 import { defineConfig } from 'adonisjs-auth-mail'
-import { DateTime } from 'luxon'
-import PasswordReset from '#models/password_reset'
 
 const authMailConfig = defineConfig({
+  /** Secret used to sign email verification tokens. Keep this set to APP_KEY. */
   secret: env.get('APP_KEY'),
-  mailer: mail,
-  from: env.get('MAIL_FROM'),
 
-  /** Token lifetimes in seconds */
-  verificationExpiresIn: 60 * 60 * 24,
-  resetExpiresIn: 60 * 60,
+  /** Base URL prefixed to emailVerification.path and passwordReset.path. */
+  appUrl: env.get('APP_URL'),
 
-  /** Links placed in the emails; point them at your frontend or at the controller routes */
-  verificationUrl: (token) => `${env.get('APP_URL')}/email/verify/${token}`,
-  resetUrl: (token) => `${env.get('APP_URL')}/password/reset/${token}`,
+  /** Settings for email verification links and messages. */
+  emailVerification: {
+    /** Verification token lifetime in seconds. Defaults to 24 hours. */
+    expiresIn: 60 * 60 * 24,
 
-  verificationMessage(message, url, user) {
-    message
-      .subject('Verify your email address')
-      .htmlView('mails/verify_email', { url, user })
-      .textView('mails/verify_email_text', { url, user })
-  },
-  resetMessage(message, url, user) {
-    message
-      .subject('Reset your password')
-      .htmlView('mails/reset_password', { url, user })
-      .textView('mails/reset_password_text', { url, user })
-  },
+    /** URL path containing the :token placeholder. */
+    path: '/email/verify/:token',
 
-  resetStore: {
-    async create(r) {
-      await PasswordReset.updateOrCreate(
-        { email: r.email },
-        { token: r.tokenHash, createdAt: DateTime.fromJSDate(r.createdAt) }
-      )
+    /** Subject and Edge views used for the verification email. */
+    template: {
+      /** Email subject line. */
+      subject: 'Verify your email address',
+
+      /** Edge template for the HTML email body. */
+      htmlView: 'mails/verify_email',
+
+      /** Edge template for the plain-text email body. */
+      textView: 'mails/verify_email_text',
     },
-    async consume(tokenHash) {
-      const deleted = await PasswordReset.query().where('token', tokenHash).delete()
-      return deleted > 0
+  },
+
+  /** Settings and model for password reset links and messages. */
+  passwordReset: {
+    /** Reset token lifetime in seconds. Defaults to 1 hour. */
+    expiresIn: 60 * 60,
+
+    /** Minimum seconds between reset emails to the same address. Defaults to 60. */
+    throttle: 60,
+
+    /** URL path containing the :token placeholder; email is added as a query parameter. */
+    path: '/password/reset/:token',
+
+    /** Subject and Edge views used for the password reset email. */
+    template: {
+      /** Email subject line. */
+      subject: 'Reset your password',
+
+      /** Edge template for the HTML email body. */
+      htmlView: 'mails/reset_password',
+
+      /** Edge template for the plain-text email body. */
+      textView: 'mails/reset_password_text',
     },
   },
 })

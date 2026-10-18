@@ -12,6 +12,8 @@
   "types": "build/index.d.ts",
   "exports": {
     ".": "./build/index.js",
+    "./services/email_verification": "./build/services/email_verification.js",
+    "./services/password_reset": "./build/services/password_reset.js",
     "./verified_middleware": "./build/verified_middleware.js"
   },
   "scripts": {
@@ -29,6 +31,7 @@
     "luxon": "^3.7.0"
   },
   "devDependencies": {
+    "@adonisjs/core": "^7.0.0",
     "@types/luxon": "^3.7.6",
     "@types/node": "^22.20.5",
     "luxon": "^3.7.0",

@@ -4,34 +4,79 @@ import {
   AuthMail,
   createToken,
   MustVerifyEmail,
+  PasswordBrokerStatus,
   VerifiedMiddleware,
   verifyToken,
 } from '../src/index.js'
 
-function setup() {
+function setup(options: { expiresIn?: number; throttle?: number } = {}) {
   const user: any = { id: 1, email: 'a@b.c', password: 'hash1', emailVerifiedAt: null }
   const sent: any[] = []
+  const rows: any[] = []
   const mailer = {
     async send(cb: any) {
-      const m: any = { to(a: string) { this.addr = a; return this }, subject(s: string) { this.subj = s; return this }, text(t: string) { this.body = t; return this } }
+      const m: any = {
+        to(a: string) { this.addr = a; return this },
+        subject(s: string) { this.subj = s; return this },
+        htmlView(view: string, data: any) { this.htmlTemplate = view; this.data = data; return this },
+        textView(view: string, data: any) { this.textTemplate = view; this.body = data.url; return this },
+      }
       await cb(m)
       sent.push(m)
     },
   }
   const am = new AuthMail(
-    { secret: 's3cret', mailer, verificationUrl: (t) => `https://x/v/${t}`, resetUrl: (t) => `https://x/r/${t}` },
-    async (id) => (String(user.id) === id ? user : null)
+    {
+      secret: 's3cret',
+      appUrl: 'https://x',
+      emailVerification: {
+        path: '/v/:token',
+        template: { subject: 'Verify email', htmlView: 'verify', textView: 'verify-text' },
+      },
+      passwordReset: {
+        path: '/r/:token',
+        template: { subject: 'Reset password', htmlView: 'reset', textView: 'reset-text' },
+        ...options,
+      },
+    },
+    {
+      async findById(id) {
+        return String(user.id) === id ? user : null
+      },
+      async findByEmail(email) {
+        return user.email === email ? user : null
+      },
+    },
+    mailer,
+    {
+      async create(record) {
+        const index = rows.findIndex((row) => row.email === record.email)
+        if (index === -1) rows.push(record)
+        else rows[index] = record
+      },
+      async hasRecent(email, since) {
+        return rows.some((row) => row.email === email && row.createdAt > since)
+      },
+      async consume(email, token, validSince) {
+        const index = rows.findIndex((row) =>
+          row.email === email && row.token === token && row.createdAt > validSince
+        )
+        if (index === -1) return false
+        rows.splice(index, 1)
+        return true
+      },
+    }
   )
-  return { user, sent, am }
+  return { user, sent, rows, am }
 }
-const tokenOf = (body: string) => body.split('/').pop()!
+const tokenOf = (body: string) => new URL(body).pathname.split('/').pop()!
 
 test('tokens are unique for identical inputs', () => {
-  const first = createToken('secret', 'reset-password', 1, 'password-hash', 3600)
-  const second = createToken('secret', 'reset-password', 1, 'password-hash', 3600)
+  const first = createToken('secret', 'verify-email', 1, 'a@b.c', 3600)
+  const second = createToken('secret', 'verify-email', 1, 'a@b.c', 3600)
   assert.notEqual(first, second)
-  assert.ok(verifyToken('secret', 'reset-password', first, 'password-hash'))
-  assert.ok(verifyToken('secret', 'reset-password', second, 'password-hash'))
+  assert.ok(verifyToken('secret', 'verify-email', first, 'a@b.c'))
+  assert.ok(verifyToken('secret', 'verify-email', second, 'a@b.c'))
 })
 
 test('email verification', async () => {
@@ -47,12 +92,35 @@ test('email verification', async () => {
 
 test('password reset is single use', async () => {
   const { user, sent, am } = setup()
-  await am.sendPasswordReset('none@x.y', async () => null)
+  assert.equal(await am.sendResetLink({ email: 'none@x.y' }), PasswordBrokerStatus.INVALID_USER)
   assert.equal(sent.length, 0)
-  await am.sendPasswordReset(user.email, async () => user)
+  assert.equal(await am.sendResetLink({ email: user.email }), PasswordBrokerStatus.RESET_LINK_SENT)
   const token = tokenOf(sent[0].body)
-  assert.ok(await am.resetPassword(token, async (u) => { u.password = 'hash2' }))
-  assert.equal(await am.resetPassword(token, async () => {}), null)
+  assert.equal(new URL(sent[0].body).pathname, `/r/${token}`)
+  assert.equal(new URL(sent[0].body).searchParams.get('email'), user.email)
+  assert.equal(await am.sendResetLink({ email: user.email }), PasswordBrokerStatus.RESET_THROTTLED)
+  assert.equal(sent.length, 1)
+  assert.equal(
+    await am.reset({ email: user.email, token, password: 'new password' }, async (u, password) => {
+      u.password = password
+    }),
+    PasswordBrokerStatus.PASSWORD_RESET
+  )
+  assert.equal(
+    await am.reset({ email: user.email, token, password: 'another password' }, async () => {}),
+    PasswordBrokerStatus.INVALID_TOKEN
+  )
+  assert.equal(user.password, 'new password')
+})
+
+test('password reset token expires based on its stored creation time', async () => {
+  const { user, sent, am } = setup({ expiresIn: 0, throttle: 0 })
+  await am.sendResetLink({ email: user.email })
+  const token = tokenOf(sent[0].body)
+  assert.equal(
+    await am.reset({ email: user.email, token, password: 'new password' }, async () => {}),
+    PasswordBrokerStatus.INVALID_TOKEN
+  )
 })
 
 test('reset store keeps one token per email and consumes it once', async () => {
@@ -62,45 +130,76 @@ test('reset store keeps one token per email and consumes it once', async () => {
   const am = new AuthMail(
     {
       secret: 's',
-      mailer: {
-        async send(callback: any) {
-          const message: any = {
-            to() { return this },
-            subject() { return this },
-            text(body: string) { this.body = body; return this },
-          }
-          await callback(message)
-          sent.push(message)
-        },
+      appUrl: 'https://x',
+      emailVerification: {
+        path: '/v/:token',
+        template: { subject: 'Verify', htmlView: 'verify', textView: 'verify-text' },
       },
-      verificationUrl: (t) => `https://x/v/${t}`,
-      resetUrl: (t) => `https://x/r/${t}`,
-      resetStore: {
+      passwordReset: {
+        path: '/r/:token',
+        template: { subject: 'Reset', htmlView: 'reset', textView: 'reset-text' },
+        throttle: 0,
+      },
+    },
+    {
+      async findById() { return user },
+      async findByEmail(email) { return email === user.email ? user : null },
+    },
+    {
+      async send(callback: any) {
+        const message: any = {
+          to() { return this },
+          subject() { return this },
+          htmlView() { return this },
+          textView(_view: string, data: any) { this.body = data.url; return this },
+        }
+        await callback(message)
+        sent.push(message)
+      },
+    },
+    {
         async create(r) {
           const index = rows.findIndex((row) => row.email === r.email)
           if (index === -1) rows.push(r)
           else rows[index] = r
         },
-        async consume(h) {
-          const index = rows.findIndex((row) => row.tokenHash === h)
+        async hasRecent() {
+          return false
+        },
+        async consume(email, token, validSince) {
+          const index = rows.findIndex((row) =>
+            row.email === email && row.token === token && row.createdAt > validSince
+          )
           if (index === -1) return false
           rows.splice(index, 1)
           return true
         },
-      },
-    },
-    async () => user
+    }
   )
-  await am.sendPasswordReset(user.email, async () => user)
+  await am.sendResetLink({ email: user.email })
   const oldToken = tokenOf(sent[0].body)
-  await am.sendPasswordReset(user.email, async () => user)
+  await am.sendResetLink({ email: user.email })
   const token = tokenOf(sent[1].body)
   assert.equal(rows.length, 1)
-  assert.deepEqual(Object.keys(rows[0]).sort(), ['createdAt', 'email', 'tokenHash'])
+  assert.deepEqual(Object.keys(rows[0]).sort(), ['createdAt', 'email', 'token'])
+  const credentials = { email: user.email, password: 'new password' }
+  assert.equal(
+    await am.reset({ ...credentials, token: oldToken }, async () => {}),
+    PasswordBrokerStatus.INVALID_TOKEN
+  )
+  assert.equal(
+    await am.reset({ ...credentials, email: 'other@x.y', token }, async () => {}),
+    PasswordBrokerStatus.INVALID_USER
+  )
   let resets = 0
-  assert.equal(await am.resetPassword(oldToken, async () => { resets++ }), null)
-  assert.equal(await am.resetPassword(token, async () => { resets++ }), user)
-  assert.equal(await am.resetPassword(token, async () => { resets++ }), null)
+  assert.equal(
+    await am.reset({ ...credentials, token }, async () => { resets++ }),
+    PasswordBrokerStatus.PASSWORD_RESET
+  )
+  assert.equal(
+    await am.reset({ ...credentials, token }, async () => { resets++ }),
+    PasswordBrokerStatus.INVALID_TOKEN
+  )
   assert.equal(resets, 1)
   assert.equal(rows.length, 0)
 })
@@ -155,43 +254,66 @@ test('propagates mailer failures', async () => {
   const am = new AuthMail(
     {
       secret: 's',
-      mailer: { async send() { throw new Error('mail transport unavailable') } },
-      verificationUrl: (token) => token,
-      resetUrl: (token) => token,
+      appUrl: 'https://x',
+      emailVerification: {
+        path: '/verify/:token',
+        template: { subject: 'Verify', htmlView: 'verify', textView: 'verify-text' },
+      },
+      passwordReset: {
+        path: '/reset/:token',
+        template: { subject: 'Reset', htmlView: 'reset', textView: 'reset-text' },
+      },
     },
-    async () => user
+    {
+      async findById(id) { return String(user.id) === id ? user : null },
+      async findByEmail(email) { return email === user.email ? user : null },
+    },
+    { async send() { throw new Error('mail transport unavailable') } }
   )
   await assert.rejects(am.sendVerification(user), /mail transport unavailable/)
 })
 
-test('message callbacks can localize mail using the user locale', async () => {
+test('renders configured message templates with user data', async () => {
   const { user, sent } = setup()
   user.locale = 'zh-CN'
   const am = new AuthMail(
     {
       secret: 's',
-      mailer: {
-        async send(callback: any) {
-          const message: any = {
-            to() { return this },
-            subject(subject: string) { this.subjectLine = subject; return this },
-            text(body: string) { this.body = body; return this },
-          }
-          await callback(message)
-          sent.push(message)
+      appUrl: 'https://x',
+      emailVerification: {
+        path: '/v/:token',
+        template: {
+          subject: '验证邮箱',
+          htmlView: 'mails/verify_email_zh',
+          textView: 'mails/verify_email_zh_text',
         },
       },
-      verificationUrl: (token) => `https://x/v/${token}`,
-      resetUrl: (token) => `https://x/r/${token}`,
-      verificationMessage(message, url, currentUser) {
-        const chinese = currentUser.locale?.startsWith('zh')
-        message.subject(chinese ? '验证邮箱' : 'Verify your email address')
-        message.text(`${chinese ? '请访问' : 'Visit'}: ${url}`)
+      passwordReset: {
+        path: '/r/:token',
+        template: { subject: 'Reset', htmlView: 'reset', textView: 'reset-text' },
       },
     },
-    async () => user
+    {
+      async findById(id) { return String(user.id) === id ? user : null },
+      async findByEmail(email) { return email === user.email ? user : null },
+    },
+    {
+      async send(callback: any) {
+        const message: any = {
+          to() { return this },
+          subject(subject: string) { this.subjectLine = subject; return this },
+          htmlView(view: string, data: any) { this.htmlTemplate = view; this.viewData = data; return this },
+          textView(view: string, data: any) { this.textTemplate = view; this.body = data.url; return this },
+        }
+        await callback(message)
+        sent.push(message)
+      },
+    }
   )
   await am.sendVerification(user)
   assert.equal(sent[0].subjectLine, '验证邮箱')
-  assert.match(sent[0].body, /^请访问:/)
+  assert.equal(sent[0].htmlTemplate, 'mails/verify_email_zh')
+  assert.equal(sent[0].textTemplate, 'mails/verify_email_zh_text')
+  assert.equal(sent[0].viewData.user, user)
+  assert.match(sent[0].body, /^https:\/\/x\/v\//)
 })

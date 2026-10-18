@@ -25,6 +25,8 @@ export async function configure(command: ConfigureCommand) {
   const stubs = [
     'config/auth_mail.stub',
     'models/password_reset.stub',
+    'validators/forgot_password_validator.stub',
+    'validators/reset_password_validator.stub',
     'controllers/email_verification_controller.stub',
     'controllers/password_reset_controller.stub',
     'migrations/add_email_verified_at_to_users_table.stub',
@@ -38,10 +40,10 @@ export async function configure(command: ConfigureCommand) {
     await codemods.makeUsingStub(stubsRoot, stub, { timestamp })
   }
 
-  await codemods.defineEnvVariables({ APP_URL: 'http://localhost:3333', MAIL_FROM: 'noreply@example.com' })
+  await codemods.defineEnvVariables({ APP_URL: 'http://localhost:3333' })
   await codemods.defineEnvValidations({
     leadingComment: 'Variables for adonisjs-auth-mail',
-    variables: { APP_URL: 'Env.schema.string()', MAIL_FROM: 'Env.schema.string()' },
+    variables: { APP_URL: 'Env.schema.string()' },
   })
   await codemods.registerMiddleware('named', [
     { name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },

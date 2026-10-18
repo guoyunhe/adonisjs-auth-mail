@@ -2,36 +2,31 @@
 
 Email verification and password reset for AdonisJS
 
-Built on `@adonisjs/mail` and `@adonisjs/auth`. Tokens are HMAC-signed and expire. Verification
-state lives on the user model, while password reset tokens are bound to the current password hash
-and tracked by the generated reset store.
+Built on `@adonisjs/mail` and `@adonisjs/auth`. Email verification uses expiring HMAC-signed tokens.
+Password resets use opaque, one-time tokens whose hashes and creation times are stored in Lucid,
+following Laravel's password broker flow.
 
 ```ts
-import mail from '@adonisjs/mail/services/main'
-import env from '#start/env'
-import { AuthMail } from 'adonisjs-auth-mail'
+import emailVerificationService from 'adonisjs-auth-mail/services/email_verification'
+import passwordResetService from 'adonisjs-auth-mail/services/password_reset'
 
-const authMail = new AuthMail(
-  {
-    secret: env.get('APP_KEY'),
-    mailer: mail,
-    verificationUrl: (token) => `https://example.com/verify-email/${token}`,
-    resetUrl: (token) => `https://example.com/reset-password/${token}`,
-  },
-  (id) => User.find(id)
-)
+await emailVerificationService.sendVerification(user)
+await emailVerificationService.verifyEmail(token)
 
-await authMail.sendVerification(user)
-await authMail.verifyEmail(token, (u) => u.markEmailAsVerified())
-
-await authMail.sendPasswordReset(email, (e) => User.findBy('email', e))
-await authMail.resetPassword(token, async (u) => { u.password = newPassword; await u.save() })
+const linkStatus = await passwordResetService.sendResetLink(email)
+const resetStatus = await passwordResetService.resetPassword({ email, token, password: newPassword })
 ```
+
+These package services read `config/auth_mail.ts` and automatically import `#models/user`, so controllers do
+not need to instantiate `AuthMail`, maintain service files, or supply user lookup/password-update
+callbacks. The password reset methods return `PasswordBrokerStatus` values corresponding to
+Laravel's broker statuses: `passwords.sent`, `passwords.user`, `passwords.throttled`,
+`passwords.reset` or `passwords.token`.
 
 ## Database
 
-The stubs are organized in `stubs/config/`, `stubs/controllers/`, `stubs/models/` and
-`stubs/migrations/`, matching a typical AdonisJS app. Email verification
+The stubs are organized in `stubs/config/`, `stubs/controllers/`, `stubs/validators/`,
+`stubs/models/` and `stubs/migrations/`, matching a typical AdonisJS app. Email verification
 does not create a separate token table or model: `stubs/migrations/add_email_verified_at_to_users_table.stub`
 adds `users.email_verified_at`, and `MustVerifyEmail` adds the verification behavior to your User
 model.
@@ -59,29 +54,20 @@ table is no longer used; drop it with an explicit migration if you want to remov
 ## Password resets, controllers and config
 
 `stubs/migrations/create_password_resets_table.stub` and `stubs/models/password_reset.stub` back
-`resetStore`. The table keeps only `id`, unique `email`, `token` and nullable `created_at`;
-each new request replaces the existing token for that email. Expiry is part of the signed token,
-and consuming a reset deletes its row. The controller stubs are in `stubs/controllers/`, and
+the package-managed `passwordReset` store. The table keeps only `id`, unique `email`, `token` (the SHA-256 hash) and nullable
+`created_at`; each new request replaces the existing token for that email. Expiry and throttling
+are checked against `created_at`, and consuming a reset deletes its row. The controller stubs are in `stubs/controllers/`, and
 `stubs/config/auth_mail.stub` is copied to `config/auth_mail.ts`. It uses `defineConfig` and wires
-the reset store to the Lucid model. Password reset records are created only after the mailer accepts
-the message; the token is atomically consumed before the password update callback runs.
+the reset service to the Lucid model. The raw token is sent only after the mailer accepts the message;
+its hash is persisted, and the token is atomically consumed before the password update runs.
 
 Existing installations keep their already-applied migration unchanged. The new code works with the
 extra legacy columns, but removing them from an existing database requires a separate migration.
 
 The default controllers use Vine validation, including an eight-character minimum and a
 128-character maximum for reset passwords. Adapt the validator to match your application's password
-policy. Message callbacks can provide localized text and HTML; `user.locale` is available when the
-user model exposes it:
-
-```ts
-verificationMessage(message, url, user) {
-  const isChinese = user.locale?.startsWith('zh')
-  message.subject(isChinese ? '验证邮箱' : 'Verify your email address')
-  message.text(`${isChinese ? '请访问' : 'Visit'}: ${url}`)
-  message.html?.(`<p>${isChinese ? '请验证邮箱：' : 'Verify your email:'} <a href="${url}">${url}</a></p>`)
-}
-```
+policy. The configured Edge templates receive both `url` and `user`, so they can localize messages
+using `user.locale`.
 
 ## Email views
 
@@ -93,8 +79,8 @@ Installation generates English Edge templates for HTML and plain-text versions o
 - `resources/views/mails/reset_password_text.edge`
 
 The generated `config/auth_mail.ts` uses `htmlView` and `textView` to render these templates. Edit
-them to match your product's wording and design, or use the message callbacks to select localized
-templates.
+them to match your product's wording and design, or select localized templates through the
+`emailVerification.template` and `passwordReset.template` paths.
 
 ## Prerequisites
 
@@ -116,9 +102,11 @@ node ace add @vinejs/vine
 node ace add adonisjs-auth-mail
 ```
 
-This copies the config, reset model, controllers, migrations and email views into your app, registers
-the `verified` middleware alias, and defines `APP_URL` and `MAIL_FROM`. Then register routes and run
-`node ace migration:run`.
+This copies the config, reset model, controllers, password validators, migrations and email views
+into your app, registers the `verified` middleware alias, and defines `APP_URL`.
+Import email verification and password reset services directly from
+`adonisjs-auth-mail/services/email_verification` and
+`adonisjs-auth-mail/services/password_reset`. Then register routes and run `node ace migration:run`.
 Running the migrations generates `database/schema.ts`, which the generated models import.
 
 Register the generated controller actions in `start/routes.ts`. Protect verification-email sending
@@ -154,7 +142,7 @@ router.post('/email/verify/send', [EmailVerificationController, 'send'])
   .use([middleware.auth(), authMailThrottle])
 router.get('/email/verify/:token', [EmailVerificationController, 'verify']).use(authMailThrottle)
 router.post('/password/forgot', [PasswordResetController, 'forgot']).use(authMailThrottle)
-router.post('/password/reset/:token', [PasswordResetController, 'reset']).use(authMailThrottle)
+router.post('/password/reset', [PasswordResetController, 'reset']).use(authMailThrottle)
 router.get('/account', [AccountController, 'show'])
   .use([middleware.auth(), middleware.verified()])
 ```
@@ -169,13 +157,17 @@ Edit `config/auth_mail.ts` after installation:
 
 | Option | Purpose |
 | --- | --- |
-| `secret` | Signs verification and reset tokens. Keep it set to `APP_KEY`; changing it invalidates outstanding links. |
-| `mailer`, `from` | Select the configured Adonis mailer and sender address. |
-| `verificationExpiresIn`, `resetExpiresIn` | Link lifetimes in seconds (default: 24 hours and 1 hour). |
-| `verificationUrl`, `resetUrl` | Build the links included in the messages. Point them to the matching app routes or your frontend pages. |
-| `verificationMessage`, `resetMessage` | Customize subjects and select Edge HTML/text views, for example based on `user.locale`. |
-| `resetStore` | Persists reset-token hashes and atomically consumes them. Keep the generated Lucid implementation for replay protection. |
+| `secret` | Signs verification tokens. Keep it set to `APP_KEY`; changing it invalidates outstanding verification links. |
+| `appUrl` | Base URL used to turn configured paths into absolute links. |
+| `emailVerification` | Groups `expiresIn` (default: 24 hours), `path` (with a `:token` placeholder), and template `subject`, `htmlView` and `textView`. |
+| `passwordReset` | Groups `expiresIn` (default: 1 hour), `throttle` (default: 60 seconds), `path` (with a `:token` placeholder) and template views. The package adds the email query parameter, automatically loads `#models/password_reset`, persists hashes, throttles emails and atomically consumes unexpired tokens. Expiry uses `created_at`. |
+
+Both package services use the configured AdonisJS mail service directly. Configure the default
+mailer and sender address in `config/mail.ts` as usual; no mailer or sender fields are needed in
+`config/auth_mail.ts`.
 
 The default verification link opens the generated `GET /email/verify/:token` action. The generated
-`resetUrl` uses `/password/reset/:token`; add a GET password-entry page there or point `resetUrl` to
-your frontend page. Submit the new password to `POST /password/reset/:token`.
+reset URL points to `/password/reset/:token?email=...`; add a GET password-entry page there or set
+`passwordReset.path` to your frontend page, keeping the `:token` placeholder. Submit `email`,
+`token` and `password` to
+`POST /password/reset`.
