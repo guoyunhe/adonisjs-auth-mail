@@ -1,0 +1,26 @@
+{
+  "name": "adonisjs-auth-mail",
+  "version": "0.1.0",
+  "description": "Email verification and password reset for AdonisJS v7, built on @adonisjs/mail and @adonisjs/auth",
+  "type": "module",
+  "license": "MIT",
+  "files": ["build", "stubs"],
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": { ".": "./build/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.spec.ts"
+  },
+  "peerDependencies": {
+    "@adonisjs/auth": "^10.0.0",
+    "@adonisjs/core": "^7.0.0",
+    "@adonisjs/mail": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
