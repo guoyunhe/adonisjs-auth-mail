@@ -47,7 +47,6 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     const user = await findByEmail(email)
     if (!user) return
     const expiresIn = this.config.resetExpiresIn ?? 3600
-    const issuedAt = new Date()
     const token = createToken(this.config.secret, 'reset-password', user.id, user.password ?? '', expiresIn)
     const url = this.config.resetUrl(token, user)
     await this.config.mailer.send((message) => {
@@ -57,14 +56,10 @@ export class AuthMail<User extends MailableUser = MailableUser> {
       message.subject('Reset your password')
       message.text?.(`Reset your password by visiting: ${url}`)
     })
-    const sentAt = new Date()
     await this.config.resetStore?.create({
-      userId: user.id,
       email: user.email,
       tokenHash: hashToken(token),
-      sentAt,
-      expiresAt: new Date(issuedAt.getTime() + expiresIn * 1000),
-      usedAt: null,
+      createdAt: new Date(),
     })
   }
 
@@ -79,7 +74,7 @@ export class AuthMail<User extends MailableUser = MailableUser> {
       return null
     }
     if (this.config.resetStore) {
-      const consumed = await this.config.resetStore.consume(hashToken(token), new Date())
+      const consumed = await this.config.resetStore.consume(hashToken(token))
       if (!consumed) return null
     }
     await setPassword(user)

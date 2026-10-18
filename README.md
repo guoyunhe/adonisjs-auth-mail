@@ -58,11 +58,16 @@ table is no longer used; drop it with an explicit migration if you want to remov
 
 ## Password resets, controllers and config
 
-`stubs/migrations/create_password_resets_table.stub` and `stubs/models/password_reset.stub` track sent
-reset emails via `resetStore`. The controller stubs are in `stubs/controllers/`, and
+`stubs/migrations/create_password_resets_table.stub` and `stubs/models/password_reset.stub` back
+`resetStore`. The table keeps only `id`, unique `email`, `token` and nullable `created_at`;
+each new request replaces the existing token for that email. Expiry is part of the signed token,
+and consuming a reset deletes its row. The controller stubs are in `stubs/controllers/`, and
 `stubs/config/auth_mail.stub` is copied to `config/auth_mail.ts`. It uses `defineConfig` and wires
 the reset store to the Lucid model. Password reset records are created only after the mailer accepts
 the message; the token is atomically consumed before the password update callback runs.
+
+Existing installations keep their already-applied migration unchanged. The new code works with the
+extra legacy columns, but removing them from an existing database requires a separate migration.
 
 The default controllers use Vine validation, including an eight-character minimum and a
 128-character maximum for reset passwords. Adapt the validator to match your application's password

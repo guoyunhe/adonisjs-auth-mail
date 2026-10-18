@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { configure, stubsRoot } from '../src/index.js'
 
@@ -32,4 +32,12 @@ test('configure generates all stubs and env', async () => {
   assert.deepEqual(middleware, [
     { stack: 'named', name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
   ])
+})
+
+test('password reset migration keeps only the minimal token columns plus id', () => {
+  const migration = readFileSync(join(stubsRoot, 'migrations/create_password_resets_table.stub'), 'utf8')
+  const columns = [...migration.matchAll(/table\.(?:increments|string|timestamp)\('([^']+)'/g)].map(
+    ([, column]) => column
+  )
+  assert.deepEqual(columns, ['id', 'email', 'token', 'created_at'])
 })

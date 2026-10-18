@@ -4,6 +4,7 @@
 import env from '#start/env'
 import mail from '@adonisjs/mail/services/main'
 import { defineConfig } from 'adonisjs-auth-mail'
+import { DateTime } from 'luxon'
 import PasswordReset from '#models/password_reset'
 
 const authMailConfig = defineConfig({
@@ -34,15 +35,14 @@ const authMailConfig = defineConfig({
 
   resetStore: {
     async create(r) {
-      await PasswordReset.create(r as any)
+      await PasswordReset.updateOrCreate(
+        { email: r.email },
+        { token: r.tokenHash, createdAt: DateTime.fromJSDate(r.createdAt) }
+      )
     },
-    async consume(tokenHash, at) {
-      const updated = await PasswordReset.query()
-        .where('tokenHash', tokenHash)
-        .whereNull('usedAt')
-        .where('expiresAt', '>', at)
-        .update({ usedAt: at })
-      return updated > 0
+    async consume(tokenHash) {
+      const deleted = await PasswordReset.query().where('token', tokenHash).delete()
+      return deleted > 0
     },
   },
 })

@@ -27,23 +27,20 @@ export interface MailMessage {
   htmlView(template: string, data?: object): this
 }
 
-/** One row per successfully accepted password reset email (the `password_resets` table). */
+/** One current reset token per email address (the `password_resets` table). */
 export interface PasswordResetRecord {
-  userId: string | number
   email: string
   tokenHash: string
-  sentAt: Date
-  expiresAt: Date
-  usedAt: Date | null
+  createdAt: Date
 }
 
 export interface PasswordResetStore {
   create(record: PasswordResetRecord): Promise<void>
-  consume(tokenHash: string, usedAt: Date): Promise<boolean>
+  consume(tokenHash: string): Promise<boolean>
 }
 
 export interface AuthMailConfig {
-  /** Tracks sent password reset emails */
+  /** Persists the current password reset token for each email address */
   resetStore?: PasswordResetStore
   /** Secret used to sign tokens, usually `env.get('APP_KEY')` */
   secret: string

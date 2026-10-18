@@ -55,7 +55,7 @@ test('password reset is single use', async () => {
   assert.equal(await am.resetPassword(token, async () => {}), null)
 })
 
-test('reset store tracks sent and used', async () => {
+test('reset store keeps one token per email and consumes it once', async () => {
   const { user } = setup()
   const rows: any[] = []
   const sent: any[] = []
@@ -76,11 +76,15 @@ test('reset store tracks sent and used', async () => {
       verificationUrl: (t) => `https://x/v/${t}`,
       resetUrl: (t) => `https://x/r/${t}`,
       resetStore: {
-        async create(r) { rows.push(r) },
-        async consume(h, at) {
-          const row = rows.find((r) => r.tokenHash === h)
-          if (!row || row.usedAt || row.expiresAt <= at) return false
-          row.usedAt = at
+        async create(r) {
+          const index = rows.findIndex((row) => row.email === r.email)
+          if (index === -1) rows.push(r)
+          else rows[index] = r
+        },
+        async consume(h) {
+          const index = rows.findIndex((row) => row.tokenHash === h)
+          if (index === -1) return false
+          rows.splice(index, 1)
           return true
         },
       },
@@ -88,14 +92,17 @@ test('reset store tracks sent and used', async () => {
     async () => user
   )
   await am.sendPasswordReset(user.email, async () => user)
+  const oldToken = tokenOf(sent[0].body)
+  await am.sendPasswordReset(user.email, async () => user)
+  const token = tokenOf(sent[1].body)
   assert.equal(rows.length, 1)
-  assert.equal(rows[0].usedAt, null)
-  const token = tokenOf(sent[0].body)
+  assert.deepEqual(Object.keys(rows[0]).sort(), ['createdAt', 'email', 'tokenHash'])
   let resets = 0
+  assert.equal(await am.resetPassword(oldToken, async () => { resets++ }), null)
   assert.equal(await am.resetPassword(token, async () => { resets++ }), user)
   assert.equal(await am.resetPassword(token, async () => { resets++ }), null)
   assert.equal(resets, 1)
-  assert.ok(rows[0].usedAt)
+  assert.equal(rows.length, 0)
 })
 
 test('MustVerifyEmail mixin persists verification once', async () => {
