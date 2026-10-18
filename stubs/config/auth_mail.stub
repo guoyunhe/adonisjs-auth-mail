@@ -22,14 +22,14 @@ const authMailConfig = defineConfig({
   verificationMessage(message, url, user) {
     message
       .subject('Verify your email address')
-      .htmlView('emails/auth_mail/verify_email', { url, user })
-      .textView('emails/auth_mail/verify_email_text', { url, user })
+      .htmlView('mails/verify_email', { url, user })
+      .textView('mails/verify_email_text', { url, user })
   },
   resetMessage(message, url, user) {
     message
       .subject('Reset your password')
-      .htmlView('emails/auth_mail/reset_password', { url, user })
-      .textView('emails/auth_mail/reset_password_text', { url, user })
+      .htmlView('mails/reset_password', { url, user })
+      .textView('mails/reset_password_text', { url, user })
   },
 
   resetStore: {

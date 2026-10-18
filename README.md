@@ -82,10 +82,10 @@ verificationMessage(message, url, user) {
 
 Installation generates English Edge templates for HTML and plain-text versions of both messages:
 
-- `resources/views/emails/auth_mail/verify_email.edge`
-- `resources/views/emails/auth_mail/verify_email_text.edge`
-- `resources/views/emails/auth_mail/reset_password.edge`
-- `resources/views/emails/auth_mail/reset_password_text.edge`
+- `resources/views/mails/verify_email.edge`
+- `resources/views/mails/verify_email_text.edge`
+- `resources/views/mails/reset_password.edge`
+- `resources/views/mails/reset_password_text.edge`
 
 The generated `config/auth_mail.ts` uses `htmlView` and `textView` to render these templates. Edit
 them to match your product's wording and design, or use the message callbacks to select localized

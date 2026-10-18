@@ -1,5 +1,5 @@
 {{{
-  exports({ to: app.makePath('resources/views/emails/auth_mail/verify_email.edge') })
+  exports({ to: app.makePath('resources/views/mails/verify_email.edge') })
 }}}
 <!DOCTYPE html>
 <html lang="en">
