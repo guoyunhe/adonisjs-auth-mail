@@ -1,4 +1,5 @@
 # adonisjs-auth-mail
+
 Email verification and password reset for AdonisJS
 
 Built on `@adonisjs/mail` and `@adonisjs/auth`. Tokens are stateless, HMAC-signed and expire;
@@ -43,6 +44,16 @@ stubs extend the schema classes generated from their migrations in `#database/sc
 reset emails via `resetStore`. The controller stubs are in `stubs/controllers/` (then register their
 routes), and `stubs/config/auth_mail.stub` is copied to `config/auth_mail.ts`. It uses `defineConfig`
 and wires both stores to the Lucid models.
+
+## Prerequisites
+
+This package requires an AdonisJS v7 application with `@adonisjs/auth` and `@adonisjs/mail`
+installed and configured. If you have not added them yet, run:
+
+```sh
+node ace add @adonisjs/auth
+node ace add @adonisjs/mail
+```
 
 ## Installation
 
