@@ -20,11 +20,15 @@ test('configure generates all stubs and env', async () => {
       }
     },
   })
-  assert.equal(made.length, 6)
+  assert.equal(made.length, 10)
   assert.ok(env)
   for (const s of made) assert.ok(existsSync(join(stubsRoot, s)), `Missing stub: ${s}`)
   assert.ok(!made.some((s) => s.includes('email_verifications')))
   assert.ok(!made.some((s) => s.includes('email_verification.stub')))
+  assert.ok(made.includes('views/emails/auth_mail/verify_email.stub'))
+  assert.ok(made.includes('views/emails/auth_mail/verify_email_text.stub'))
+  assert.ok(made.includes('views/emails/auth_mail/reset_password.stub'))
+  assert.ok(made.includes('views/emails/auth_mail/reset_password_text.stub'))
   assert.deepEqual(middleware, [
     { stack: 'named', name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
   ])

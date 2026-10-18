@@ -25,6 +25,7 @@
     "@adonisjs/lucid": "^22.0.0",
     "@adonisjs/mail": "^10.0.0",
     "@vinejs/vine": "^4.0.0",
+    "edge.js": "^6.0.1",
     "luxon": "^3.7.0"
   },
   "devDependencies": {

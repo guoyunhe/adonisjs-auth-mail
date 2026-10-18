@@ -23,6 +23,8 @@ export interface MailMessage {
   subject(subject: string): this
   text?(content: string): this
   html?(content: string): this
+  textView(template: string, data?: object): this
+  htmlView(template: string, data?: object): this
 }
 
 /** One row per successfully accepted password reset email (the `password_resets` table). */

@@ -1,0 +1,17 @@
+{{{
+  exports({ to: app.makePath('resources/views/emails/auth_mail/verify_email.edge') })
+}}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verify your email address</title>
+  </head>
+  <body>
+    <h1>Verify your email address</h1>
+    <p>Confirm that {{ user.email }} is your email address by selecting the link below.</p>
+    <p><a href="{{ url }}">Verify email address</a></p>
+    <p>If you did not create this account, you can ignore this message.</p>
+  </body>
+</html>

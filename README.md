@@ -78,16 +78,30 @@ verificationMessage(message, url, user) {
 }
 ```
 
+## Email views
+
+Installation generates English Edge templates for HTML and plain-text versions of both messages:
+
+- `resources/views/emails/auth_mail/verify_email.edge`
+- `resources/views/emails/auth_mail/verify_email_text.edge`
+- `resources/views/emails/auth_mail/reset_password.edge`
+- `resources/views/emails/auth_mail/reset_password_text.edge`
+
+The generated `config/auth_mail.ts` uses `htmlView` and `textView` to render these templates. Edit
+them to match your product's wording and design, or use the message callbacks to select localized
+templates.
+
 ## Prerequisites
 
 This package's generated models, migrations and controllers require an AdonisJS v7
-application with Lucid, auth, mail and Vine installed and configured. If you have not added them yet,
-run:
+application with Lucid, auth, mail, Edge and Vine installed and configured. If you have not added
+them yet, run:
 
 ```sh
 node ace add @adonisjs/lucid
 node ace add @adonisjs/auth
 node ace add @adonisjs/mail
+node ace add edge
 node ace add @vinejs/vine
 ```
 
@@ -97,8 +111,8 @@ node ace add @vinejs/vine
 node ace add adonisjs-auth-mail
 ```
 
-This copies the config, reset model, controllers and migrations into your app, registers the
-`verified` middleware alias, and defines `APP_URL` and `MAIL_FROM`. Then register routes and run
+This copies the config, reset model, controllers, migrations and email views into your app, registers
+the `verified` middleware alias, and defines `APP_URL` and `MAIL_FROM`. Then register routes and run
 `node ace migration:run`.
 Running the migrations generates `database/schema.ts`, which the generated models import.
 
