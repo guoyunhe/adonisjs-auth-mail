@@ -39,3 +39,20 @@ test('password reset is single use', async () => {
   assert.ok(await am.resetPassword(token, async (u) => { u.password = 'hash2' }))
   assert.equal(await am.resetPassword(token, async () => {}), null)
 })
+
+test('verification store tracks sent messages', async () => {
+  const { user, sent } = setup()
+  const rows: any[] = []
+  const store = {
+    async create(r: any) { rows.push(r) },
+    async markVerified(h: string, at: Date) { rows.find((r) => r.tokenHash === h).verifiedAt = at },
+  }
+  const am = new AuthMail(
+    { secret: 's', verificationStore: store, mailer: { async send() {} }, verificationUrl: (t) => t, resetUrl: (t) => t },
+    async () => user
+  )
+  await am.sendVerification(user)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].verifiedAt, null)
+  assert.equal(sent.length, 0)
+})

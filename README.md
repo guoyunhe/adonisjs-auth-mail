@@ -25,3 +25,11 @@ await authMail.verifyEmail(token, async (u) => { u.emailVerifiedAt = DateTime.no
 await authMail.sendPasswordReset(email, (e) => User.findBy('email', e))
 await authMail.resetPassword(token, async (u) => { u.password = newPassword; await u.save() })
 ```
+
+## Database
+
+Copy the stubs in `stubs/` into your app: `add_email_verified_at_to_users_table.stub` adds
+`users.email_verified_at` (verification status), and `create_email_verifications_table.stub` +
+`email_verification_model.stub` create the `email_verifications` table/model that tracks each sent
+message (token hash, sent/expiry/verified timestamps). Pass `verificationStore` (with `create` and
+`markVerified`, e.g. backed by that model) in the config to record them.

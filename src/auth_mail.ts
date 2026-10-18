@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { createToken, readUserId, verifyToken } from './token.js'
 import type { AuthMailConfig, MailableUser } from './types.js'
 
@@ -13,13 +14,17 @@ export class AuthMail<User extends MailableUser = MailableUser> {
   ) {}
 
   async sendVerification(user: User) {
-    const token = createToken(
-      this.config.secret,
-      'verify-email',
-      user.id,
-      user.email,
-      this.config.verificationExpiresIn ?? 86400
-    )
+    const expiresIn = this.config.verificationExpiresIn ?? 86400
+    const token = createToken(this.config.secret, 'verify-email', user.id, user.email, expiresIn)
+    const sentAt = new Date()
+    await this.config.verificationStore?.create({
+      userId: user.id,
+      email: user.email,
+      tokenHash: hashToken(token),
+      sentAt,
+      expiresAt: new Date(sentAt.getTime() + expiresIn * 1000),
+      verifiedAt: null,
+    })
     const url = this.config.verificationUrl(token, user)
     await this.config.mailer.send((message) => {
       message.to(user.email)
@@ -36,6 +41,7 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     const user = id ? await this.findUser(id) : null
     if (!user || !verifyToken(this.config.secret, 'verify-email', token, user.email)) return null
     await markVerified(user)
+    await this.config.verificationStore?.markVerified(hashToken(token), new Date())
     return user
   }
 
@@ -73,4 +79,8 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     await setPassword(user)
     return user
   }
+}
+
+function hashToken(token: string) {
+  return createHash('sha256').update(token).digest('hex')
 }

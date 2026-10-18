@@ -4,7 +4,7 @@
   "description": "Email verification and password reset for AdonisJS v7, built on @adonisjs/mail and @adonisjs/auth",
   "type": "module",
   "license": "MIT",
-  "files": ["build"],
+  "files": ["build", "stubs"],
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "exports": { ".": "./build/index.js" },

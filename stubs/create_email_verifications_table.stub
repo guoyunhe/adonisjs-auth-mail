@@ -1,0 +1,21 @@
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  protected tableName = 'email_verifications'
+
+  async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.increments('id')
+      table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE')
+      table.string('email').notNullable()
+      table.string('token_hash').notNullable().index()
+      table.timestamp('sent_at').notNullable()
+      table.timestamp('expires_at').notNullable()
+      table.timestamp('verified_at').nullable()
+    })
+  }
+
+  async down() {
+    this.schema.dropTable(this.tableName)
+  }
+}

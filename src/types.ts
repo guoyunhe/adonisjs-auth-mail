@@ -24,7 +24,25 @@ export interface MailMessage {
   html?(content: string): this
 }
 
+/** One row per verification email sent (the `email_verifications` table). */
+export interface EmailVerificationRecord {
+  userId: string | number
+  email: string
+  tokenHash: string
+  sentAt: Date
+  expiresAt: Date
+  verifiedAt: Date | null
+}
+
+/** Persistence for sent verification messages, e.g. backed by a Lucid model. */
+export interface EmailVerificationStore {
+  create(record: EmailVerificationRecord): Promise<void>
+  markVerified(tokenHash: string, verifiedAt: Date): Promise<void>
+}
+
 export interface AuthMailConfig {
+  /** Tracks sent verification emails and their verification status */
+  verificationStore?: EmailVerificationStore
   /** Secret used to sign tokens, usually `env.get('APP_KEY')` */
   secret: string
   /** Mail service, usually `import mail from '@adonisjs/mail/services/main'` */
