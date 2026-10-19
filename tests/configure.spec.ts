@@ -6,11 +6,15 @@ import { configure, stubsRoot } from '../src/index.js'
 
 test('configure generates all stubs and env', async () => {
   const made: string[] = []
+  const viewStubData: Record<string, unknown>[] = []
   const middleware: { stack: string; name: string; path: string }[] = []
   await configure({
     async createCodemods() {
       return {
-        async makeUsingStub(_root: string, stub: string) { made.push(stub) },
+        async makeUsingStub(_root: string, stub: string, data: Record<string, unknown>) {
+          made.push(stub)
+          if (stub.startsWith('views/mails/')) viewStubData.push(data)
+        },
         async registerMiddleware(stack, entries) {
           for (const entry of entries) middleware.push({ stack, ...entry })
         },
@@ -24,6 +28,11 @@ test('configure generates all stubs and env', async () => {
   assert.ok(made.includes('views/mails/email_verification_text.stub'))
   assert.ok(made.includes('views/mails/password_reset.stub'))
   assert.ok(made.includes('views/mails/password_reset_text.stub'))
+  assert.equal(viewStubData.length, 4)
+  for (const data of viewStubData) {
+    assert.deepEqual(Object.keys(data), ['timestamp'])
+    assert.equal(typeof data.timestamp, 'number')
+  }
   assert.ok(made.includes('validators/password_reset.stub'))
   assert.ok(!made.some((s) => s.includes('forgot_password_validator.stub')))
   assert.ok(!made.some((s) => s.includes('reset_password_validator.stub')))

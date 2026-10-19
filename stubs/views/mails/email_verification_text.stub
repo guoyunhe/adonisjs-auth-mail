@@ -3,7 +3,7 @@
 }}}
 Verify your email address
 
-Confirm that {{ user.email }} is your email address by visiting:
-{{{ url }}}
+Confirm that {{ '{{' }} user.email {{ '}' }}{{ '}' }} is your email address by visiting:
+{{ '{{{' }} url {{ '}' }}{{ '}' }}{{ '}' }}
 
 If you did not create this account, you can ignore this message.
