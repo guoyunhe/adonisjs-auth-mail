@@ -9,7 +9,7 @@ const authMailConfig = defineConfig({
     /** Same duration value accepted by AdonisJS encryption, such as '1d', '12h', or '5m'. */
     expiresIn: '24h',
 
-    /** URL path containing the :token placeholder. */
+    /** Email confirmation page URL path. */
     path: '/email/verify/:token',
 
     /** Subject and Edge views used for the verification email. */
@@ -33,7 +33,7 @@ const authMailConfig = defineConfig({
     /** Minimum seconds between reset emails to the same address. Defaults to 60. */
     throttle: 60,
 
-    /** URL path containing the :token placeholder; email is added as a query parameter. */
+    /** Password reset page URL path. */
     path: '/password/reset/:token',
 
     /** Subject and Edge views used for the password reset email. */

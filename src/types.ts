@@ -55,7 +55,7 @@ export interface EmailVerificationConfig {
   /** Same duration value accepted by AdonisJS encryption, such as `1d`, `12h`, or `5m`. */
   expiresIn?: number | string
 
-  /** Absolute-path URL pattern. It must include the `:token` placeholder. */
+  /** Verification page URL path. It must include the `:token` placeholder. */
   path: string
 
   /** Subject and Edge views used for the verification email. */
@@ -69,7 +69,7 @@ export interface PasswordResetConfig {
   /** Minimum seconds between reset emails to the same address. Defaults to 60. */
   throttle?: number
 
-  /** Absolute-path URL pattern. It must include the `:token` placeholder; email is added as a query parameter. */
+  /** Password reset page URL path. It must include the `:token` placeholder; email is added as a query parameter. */
   path: string
 
   /** Subject and Edge views used for the password reset email. */

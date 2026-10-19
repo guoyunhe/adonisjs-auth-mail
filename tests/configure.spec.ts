@@ -41,6 +41,24 @@ test('configure generates all stubs and env', async () => {
   ])
 })
 
+test('email verification controller only verifies tokens through POST', () => {
+  const controller = readFileSync(
+    join(stubsRoot, 'controllers/email_verification_controller.stub'),
+    'utf8'
+  )
+  assert.match(controller, /async verify\(\{ params, response \}: HttpContext\)/)
+  assert.doesNotMatch(controller, /\/email\/verify\/:token/)
+  assert.doesNotMatch(controller, /async confirm\(/)
+  assert.doesNotMatch(controller, /(?:GET|POST|PUT|PATCH|DELETE)\s+\//)
+})
+
+test('controller stubs do not prescribe route paths', () => {
+  for (const name of ['email_verification_controller.stub', 'password_reset_controller.stub']) {
+    const controller = readFileSync(join(stubsRoot, 'controllers', name), 'utf8')
+    assert.doesNotMatch(controller, /(?:GET|POST|PUT|PATCH|DELETE)\s+\//, name)
+  }
+})
+
 test('password reset migration keeps only the minimal token columns plus id', () => {
   const migration = readFileSync(join(stubsRoot, 'migrations/create_password_resets_table.stub'), 'utf8')
   const columns = [...migration.matchAll(/table\.(?:increments|string|timestamp)\('([^']+)'/g)].map(

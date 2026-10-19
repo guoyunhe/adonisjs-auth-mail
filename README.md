@@ -95,7 +95,7 @@ Edit `emailVerification` in `config/auth_mail.ts`:
 | Option | Purpose |
 | --- | --- |
 | `expiresIn` | Token lifetime (default: `24h`); uses AdonisJS encryption duration formats such as `1d`, `12h`, or `5m`. |
-| `path` | Verification URL path containing the `:token` placeholder. |
+| `path` | URL path of the verification page containing the `:token` placeholder. |
 | `template` | Email `subject`, `htmlView`, and `textView`. |
 
 Verification tokens use purpose-bound AdonisJS encryption and the application's `app.appKey`.
@@ -104,14 +104,15 @@ The service uses `app.appUrl` to build absolute links. Configure the default mai
 
 ### Routes and middleware
 
-Register the generated send and verify actions in `start/routes.ts`. Sending a verification email
-requires an authenticated user; the link target from `emailVerification.path` must resolve to the
-verification action. You may protect routes that require a verified account with the named
-`verified` middleware:
+Register the generated send and verify actions in `start/routes.ts`. The
+`emailVerification.path` points to your application's verification page, not the POST action.
+Sending a verification email requires an authenticated user. You may protect routes that require
+a verified account with the named `verified` middleware:
 
 ```ts
 import router from '@adonisjs/core/services/router'
 import EmailVerificationController from '#controllers/email_verification_controller'
+import EmailVerificationPageController from '#controllers/email_verification_page_controller'
 import AccountController from '#controllers/account_controller'
 import { middleware } from '#start/kernel'
 
@@ -119,16 +120,36 @@ import { middleware } from '#start/kernel'
 router.post('/email/verify/send', [EmailVerificationController, 'send'])
   .use(middleware.auth())
 
-// Verify the email address using the token from the email link.
-router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
+// Render a confirmation screen using your app's frontend (React, Vue, Edge, etc.).
+// This GET handler must not verify the email address.
+router.get('/email/verify/:token', [EmailVerificationPageController, 'show'])
+
+// Verify the email address only after the user submits the confirmation form.
+router.post('/email/verify/:token', [EmailVerificationController, 'verify'])
 
 // Use `verified` middleware to restrict unverified users from creating posts
 router.post('/post', [AccountController, 'store'])
   .use([middleware.auth(), middleware.verified()])
 ```
 
-The generated verification URL is `GET /email/verify/:token`. The verification route does not
-require an authenticated session because the encrypted token identifies and verifies its owner.
+The package does not generate a confirmation page. Implement `GET /email/verify/:token` using your
+application's frontend stack. It should display a confirmation action without changing verification
+state, then call `POST /email/verify/:token` only after the user confirms. For example, a frontend
+page can use this handler for its confirmation button:
+
+```ts
+async function confirmEmailVerification(token: string) {
+  const response = await fetch(`/email/verify/${encodeURIComponent(token)}`, {
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error('Unable to verify email address')
+  return response.json()
+}
+```
+
+This prevents email security scanners that only follow links from verifying an address
+automatically. Neither route requires an authenticated session because the encrypted token
+identifies and verifies its owner.
 `verified` returns 403 for authenticated users without a verified email; customize it to redirect
 browser users to your verification notice page if needed.
 
@@ -139,6 +160,7 @@ browser users to your verification notice page if needed.
 import User from '#models/user'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
 import UserTransformer from '#transformers/user_transformer'
 import emailVerificationService from 'adonisjs-auth-mail/services/email_verification'
 
@@ -147,9 +169,12 @@ export default class NewAccountController {
     const { fullName, email, password } = await request.validateUsing(signupValidator)
 
     const user = await User.create({ fullName, email, password })
-    await emailVerificationService.sendVerificationLink(user)
-
     const token = await User.accessTokens.create(user)
+
+    void emailVerificationService.sendVerificationLink(user).catch((error) => {
+      logger.error({ err: error }, 'Failed to send email verification link')
+    })
+
     return serialize({
       user: UserTransformer.transform(user),
       token: token.value!.release(),
@@ -157,6 +182,10 @@ export default class NewAccountController {
   }
 }
 ```
+
+The verification email is sent asynchronously and is not awaited, so a mail delivery failure does
+not prevent registration from succeeding. The failure is logged; production applications can
+instead enqueue the email and retry it using their job system.
 
 ## Password Reset
 
@@ -168,7 +197,7 @@ Edit `passwordReset` in `config/auth_mail.ts`:
 | --- | --- |
 | `expiresIn` | Token lifetime (default: `1h`); uses AdonisJS encryption duration formats such as `1d`, `12h`, or `5m`. |
 | `throttle` | Minimum seconds between reset emails to the same address (default: 60). |
-| `path` | Reset URL path containing the `:token` placeholder; the service adds the email query parameter. |
+| `path` | URL path of the password reset page containing the `:token` placeholder; the service adds the email query parameter. |
 | `template` | Email `subject`, `htmlView`, and `textView`. |
 
 Reset tokens use purpose-bound AdonisJS encryption and the application's `app.appKey`. The service
@@ -230,12 +259,15 @@ endpoints. For example, when using the AdonisJS Limiter middleware:
 // start/routes.ts
 import router from '@adonisjs/core/services/router'
 import EmailVerificationController from '#controllers/email_verification_controller'
+import EmailVerificationPageController from '#controllers/email_verification_page_controller'
 import PasswordResetController from '#controllers/password_reset_controller'
 import { authMailThrottle } from '#start/limiter'
 
 router.post('/email/verify/send', [EmailVerificationController, 'send'])
   .use(authMailThrottle)
-router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
+router.get('/email/verify/:token', [EmailVerificationPageController, 'show'])
+  .use(authMailThrottle)
+router.post('/email/verify/:token', [EmailVerificationController, 'verify'])
   .use(authMailThrottle)
 router.post('/password/forgot', [PasswordResetController, 'forgot'])
   .use(authMailThrottle)
