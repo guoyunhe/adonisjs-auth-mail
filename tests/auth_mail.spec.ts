@@ -191,12 +191,12 @@ const tokenOf = (url: string) => new URL(url).pathname.split('/').pop()!
 
 test('email verification tokens are unique and purpose-bound', async () => {
   setup()
-  await emailVerificationService.sendVerification(user)
+  await emailVerificationService.sendVerificationLink(user)
   const first = tokenOf(sent[0].textData.url)
-  await emailVerificationService.sendVerification(user)
+  await emailVerificationService.sendVerificationLink(user)
   const second = tokenOf(sent[1].textData.url)
   assert.notEqual(first, second)
-  assert.equal(await passwordResetService.resetPassword({
+  assert.equal(await passwordResetService.reset({
     email: user.email,
     token: first,
     password: 'new password',
@@ -205,18 +205,18 @@ test('email verification tokens are unique and purpose-bound', async () => {
 
 test('email verification rejects invalid tokens and persists verification once', async () => {
   setup()
-  await emailVerificationService.sendVerification(user)
+  await emailVerificationService.sendVerificationLink(user)
   const token = tokenOf(sent[0].textData.url)
-  assert.equal(await emailVerificationService.verifyEmail(`${token}x`), null)
-  assert.equal(await emailVerificationService.verifyEmail(token), user)
+  assert.equal(await emailVerificationService.verify(`${token}x`), null)
+  assert.equal(await emailVerificationService.verify(token), user)
   assert.ok(user.emailVerifiedAt)
-  assert.equal(await emailVerificationService.verifyEmail(token), null)
+  assert.equal(await emailVerificationService.verify(token), null)
 })
 
 test('email verification accepts encryption duration strings', async () => {
   setup()
   authMailConfig.emailVerification.expiresIn = '5m'
-  await emailVerificationService.sendVerification(user)
+  await emailVerificationService.sendVerificationLink(user)
   assert.equal(encryption.lastDuration, '5m')
 })
 
@@ -229,12 +229,12 @@ test('password reset is throttled and single use', async () => {
   assert.equal(await passwordResetService.sendResetLink(user.email), PasswordBrokerStatus.RESET_THROTTLED)
   assert.equal(sent.length, 1)
   assert.equal(
-    await passwordResetService.resetPassword({ email: user.email, token, password: 'new password' }),
+    await passwordResetService.reset({ email: user.email, token, password: 'new password' }),
     PasswordBrokerStatus.PASSWORD_RESET
   )
   assert.equal(user.password, 'new password')
   assert.equal(
-    await passwordResetService.resetPassword({ email: user.email, token, password: 'another password' }),
+    await passwordResetService.reset({ email: user.email, token, password: 'another password' }),
     PasswordBrokerStatus.INVALID_TOKEN
   )
 })
@@ -245,7 +245,7 @@ test('password reset token is bound to the user and email', async () => {
   const token = tokenOf(sent[0].textData.url)
   user.email = 'changed@b.c'
   assert.equal(
-    await passwordResetService.resetPassword({
+    await passwordResetService.reset({
       email: user.email,
       token,
       password: 'new password',
@@ -259,7 +259,7 @@ test('password reset token expires', async () => {
   await passwordResetService.sendResetLink(user.email)
   const token = tokenOf(sent[0].textData.url)
   assert.equal(
-    await passwordResetService.resetPassword({ email: user.email, token, password: 'new password' }),
+    await passwordResetService.reset({ email: user.email, token, password: 'new password' }),
     PasswordBrokerStatus.INVALID_TOKEN
   )
 })
@@ -270,7 +270,7 @@ test('password reset accepts encryption duration strings', async () => {
   assert.equal(encryption.lastDuration, '12h')
   const token = tokenOf(sent[0].textData.url)
   assert.equal(
-    await passwordResetService.resetPassword({ email: user.email, token, password: 'new password' }),
+    await passwordResetService.reset({ email: user.email, token, password: 'new password' }),
     PasswordBrokerStatus.PASSWORD_RESET
   )
 })
@@ -284,7 +284,7 @@ test('reset store keeps one token per email and consumes it once', async () => {
   assert.equal(rows.length, 1)
   assert.deepEqual(Object.keys(rows[0]).sort(), ['createdAt', 'email', 'token'])
   assert.equal(
-    await passwordResetService.resetPassword({
+    await passwordResetService.reset({
       email: user.email,
       token: oldToken,
       password: 'new password',
@@ -292,7 +292,7 @@ test('reset store keeps one token per email and consumes it once', async () => {
     PasswordBrokerStatus.INVALID_TOKEN
   )
   assert.equal(
-    await passwordResetService.resetPassword({
+    await passwordResetService.reset({
       email: 'other@x.y',
       token,
       password: 'new password',
@@ -300,7 +300,7 @@ test('reset store keeps one token per email and consumes it once', async () => {
     PasswordBrokerStatus.INVALID_USER
   )
   assert.equal(
-    await passwordResetService.resetPassword({
+    await passwordResetService.reset({
       email: user.email,
       token,
       password: 'new password',
@@ -358,7 +358,7 @@ test('verified middleware blocks unverified users and allows verified users', as
 test('propagates mailer failures', async () => {
   setup()
   mailFailure = true
-  await assert.rejects(emailVerificationService.sendVerification(user), /mail transport unavailable/)
+  await assert.rejects(emailVerificationService.sendVerificationLink(user), /mail transport unavailable/)
 })
 
 test('renders configured message templates with user data', async () => {
@@ -369,7 +369,7 @@ test('renders configured message templates with user data', async () => {
     htmlView: 'mails/email_verification_zh',
     textView: 'mails/email_verification_zh_text',
   }
-  await emailVerificationService.sendVerification(user)
+  await emailVerificationService.sendVerificationLink(user)
   assert.equal(sent[0].subjectLine, '验证邮箱')
   assert.equal(sent[0].htmlTemplate, 'mails/email_verification_zh')
   assert.equal(sent[0].textTemplate, 'mails/email_verification_zh_text')
@@ -380,5 +380,5 @@ test('renders configured message templates with user data', async () => {
 test('rejects paths without a token placeholder', async () => {
   setup()
   authMailConfig.emailVerification.path = '/verify'
-  await assert.rejects(emailVerificationService.sendVerification(user), /:token placeholder/)
+  await assert.rejects(emailVerificationService.sendVerificationLink(user), /:token placeholder/)
 })

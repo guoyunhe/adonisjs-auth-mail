@@ -16,7 +16,7 @@ import type {
 
 interface PasswordResetService {
   sendResetLink(email: string): Promise<SendResetLinkStatus>
-  resetPassword(credentials: ResetPasswordCredentials): Promise<ResetPasswordStatus>
+  reset(credentials: ResetPasswordCredentials): Promise<ResetPasswordStatus>
 }
 
 let passwordResetService: PasswordResetService
@@ -74,7 +74,7 @@ await app.booted(async () => {
       return PasswordBrokerStatus.RESET_LINK_SENT
     },
 
-    async resetPassword(credentials: ResetPasswordCredentials): Promise<ResetPasswordStatus> {
+    async reset(credentials: ResetPasswordCredentials): Promise<ResetPasswordStatus> {
       const user = await User.findBy('email', credentials.email)
       if (!user) return PasswordBrokerStatus.INVALID_USER
 

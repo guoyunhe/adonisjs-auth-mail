@@ -137,7 +137,7 @@ export default class NewAccountController {
     const { fullName, email, password } = await request.validateUsing(signupValidator)
 
     const user = await User.create({ fullName, email, password })
-    await emailVerificationService.sendVerification(user)
+    await emailVerificationService.sendVerificationLink(user)
 
     const token = await User.accessTokens.create(user)
     return serialize({

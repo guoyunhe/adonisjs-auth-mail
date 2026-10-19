@@ -5,8 +5,8 @@ import mail from '@adonisjs/mail/services/main'
 import type { AuthMailConfig, AuthMailServiceUser, AuthMailUserModel } from '../types.js'
 
 interface EmailVerificationService {
-  sendVerification(user: AuthMailServiceUser): Promise<void>
-  verifyEmail(token: string): Promise<AuthMailServiceUser | null>
+  sendVerificationLink(user: AuthMailServiceUser): Promise<void>
+  verify(token: string): Promise<AuthMailServiceUser | null>
 }
 
 let emailVerificationService: EmailVerificationService
@@ -20,7 +20,7 @@ await app.booted(async () => {
   const User = await app.importDefault<{ default: AuthMailUserModel }>('#models/user')
 
   emailVerificationService = {
-    async sendVerification(user) {
+    async sendVerificationLink(user) {
       const expiresIn = authMailConfig.emailVerification.expiresIn ?? '24h'
       const token = encryption.encrypt(
         { userId: String(user.id), binding: user.email },
@@ -43,7 +43,7 @@ await app.booted(async () => {
       })
     },
 
-    async verifyEmail(token) {
+    async verify(token) {
       const payload = encryption.decrypt<{ userId: string; binding: string }>(
         token,
         'email-verification'
