@@ -1,6 +1,6 @@
 {
   "name": "adonisjs-auth-mail",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Email verification and password reset for AdonisJS v7, built on @adonisjs/mail and @adonisjs/auth",
   "author": {
     "name": "Guo Yunhe",
