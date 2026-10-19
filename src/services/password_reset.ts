@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { DateTime } from 'luxon'
 import app from '@adonisjs/core/services/app'
 import config from '@adonisjs/core/services/config'
 import encryption from '@adonisjs/core/services/encryption'
@@ -6,14 +7,12 @@ import mail from '@adonisjs/mail/services/main'
 import { PasswordBrokerStatus } from '../types.js'
 import type {
   AuthMailConfig,
-  AuthMailServiceUser,
   AuthMailUserModel,
   PasswordResetModel,
   ResetPasswordCredentials,
   ResetPasswordStatus,
   SendResetLinkStatus,
 } from '../types.js'
-import { LucidPasswordResetStore } from './lucid_password_reset_store.js'
 
 interface PasswordResetService {
   sendResetLink(email: string): Promise<SendResetLinkStatus>
@@ -30,7 +29,6 @@ await app.booted(async () => {
   }
   const User = await app.importDefault<{ default: AuthMailUserModel }>('#models/user')
   const PasswordReset = await app.importDefault<{ default: PasswordResetModel }>('#models/password_reset')
-  const resetStore = new LucidPasswordResetStore(PasswordReset)
 
   passwordResetService = {
     async sendResetLink(email): Promise<SendResetLinkStatus> {
@@ -40,7 +38,10 @@ await app.booted(async () => {
       const throttle = authMailConfig.passwordReset.throttle ?? 60
       if (
         throttle > 0 &&
-        await resetStore.hasRecent(user.email, new Date(Date.now() - throttle * 1000))
+        await PasswordReset.query()
+          .where('email', user.email)
+          .where('createdAt', '>', DateTime.fromJSDate(new Date(Date.now() - throttle * 1000)))
+          .first()
       ) {
         return PasswordBrokerStatus.RESET_THROTTLED
       }
@@ -66,11 +67,10 @@ await app.booted(async () => {
           .htmlView(template.htmlView, { url: url.toString(), user })
           .textView(template.textView, { url: url.toString(), user })
       })
-      await resetStore.create({
-        email: user.email,
-        token: hashToken(token),
-        createdAt: new Date(),
-      })
+      await PasswordReset.updateOrCreate(
+        { email: user.email },
+        { token: hashToken(token), createdAt: DateTime.now() }
+      )
       return PasswordBrokerStatus.RESET_LINK_SENT
     },
 
@@ -86,11 +86,11 @@ await app.booted(async () => {
         return PasswordBrokerStatus.INVALID_TOKEN
       }
 
-      const consumed = await resetStore.consume(
-        user.email,
-        hashToken(credentials.token)
-      )
-      if (!consumed) return PasswordBrokerStatus.INVALID_TOKEN
+      const deleted = await PasswordReset.query()
+        .where('email', user.email)
+        .where('token', hashToken(credentials.token))
+        .delete()
+      if (deleted === 0) return PasswordBrokerStatus.INVALID_TOKEN
 
       user.password = credentials.password
       await user.save()

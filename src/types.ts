@@ -12,20 +12,6 @@ export interface MailableUser {
   locale?: string
 }
 
-/** One current reset token per email address (the `password_resets` table). */
-export interface PasswordResetRecord {
-  email: string
-  /** SHA-256 hash of the raw token sent to the user */
-  token: string
-  createdAt: Date
-}
-
-export interface PasswordResetStore {
-  create(record: PasswordResetRecord): Promise<void>
-  hasRecent(email: string, since: Date): Promise<boolean>
-  consume(email: string, token: string): Promise<boolean>
-}
-
 export interface AuthMailServiceUser extends MailableUser {
   markEmailAsVerified(): Promise<void>
   save(): Promise<unknown>
