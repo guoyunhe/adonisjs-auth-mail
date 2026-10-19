@@ -2,8 +2,30 @@
   "name": "adonisjs-auth-mail",
   "version": "0.1.0",
   "description": "Email verification and password reset for AdonisJS v7, built on @adonisjs/mail and @adonisjs/auth",
+  "author": {
+    "name": "Guo Yunhe",
+    "email": "i@guoyunhe.me"
+  },
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://github.com/guoyunhe/adonisjs-auth-mail#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guoyunhe/adonisjs-auth-mail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/guoyunhe/adonisjs-auth-mail/issues"
+  },
+  "keywords": [
+    "adonisjs",
+    "adonisjs-v7",
+    "authentication",
+    "email-verification",
+    "password-reset"
+  ],
   "type": "module",
-  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "files": [
     "build",
     "stubs"
@@ -20,6 +42,13 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.spec.ts"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.14.0",
+      "onFail": "error"
+    }
   },
   "peerDependencies": {
     "@adonisjs/auth": "^10.0.0",

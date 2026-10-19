@@ -24,17 +24,27 @@ node ace add adonisjs-auth-mail
 
 The command creates these files in your application:
 
-- `config/auth_mail.ts`
-- `app/models/password_reset.ts`
-- `app/validators/password_reset.ts`
-- `app/controllers/email_verification_controller.ts`
-- `app/controllers/password_reset_controller.ts`
-- `database/migrations/<timestamp>_add_email_verified_at_to_users_table.ts`
-- `database/migrations/<timestamp>_create_password_resets_table.ts`
-- `resources/views/mails/email_verification.edge`
-- `resources/views/mails/email_verification_text.edge`
-- `resources/views/mails/password_reset.edge`
-- `resources/views/mails/password_reset_text.edge`
+- `config/`
+  - `auth_mail.ts`
+- `app/`
+  - `models/`
+    - `password_reset.ts`
+  - `validators/`
+    - `password_reset.ts`
+  - `controllers/`
+    - `email_verification_controller.ts`
+    - `password_reset_controller.ts`
+- `database/`
+  - `migrations/`
+    - `<timestamp>_add_email_verified_at_to_users_table.ts`
+    - `<timestamp>_create_password_resets_table.ts`
+- `resources/`
+  - `views/`
+    - `mails/`
+      - `email_verification.edge`
+      - `email_verification_text.edge`
+      - `password_reset.edge`
+      - `password_reset_text.edge`
 
 It also updates these existing files:
 
