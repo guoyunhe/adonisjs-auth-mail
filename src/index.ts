@@ -1,5 +1,5 @@
-export { MustVerifyEmail } from './must_verify_email.js'
-export type { MustVerifyEmailUser } from './must_verify_email.js'
+export { withEmailVerification } from './with_email_verification.js'
+export type { WithEmailVerificationUser } from './with_email_verification.js'
 export { default as VerifiedMiddleware } from './verified_middleware.js'
 export type * from './types.js'
 export { PasswordBrokerStatus } from './types.js'

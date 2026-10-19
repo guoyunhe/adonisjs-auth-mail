@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { setApp } from '@adonisjs/core/services/app'
-import { MustVerifyEmail, PasswordBrokerStatus, VerifiedMiddleware } from '../src/index.js'
+import { withEmailVerification, PasswordBrokerStatus, VerifiedMiddleware } from '../src/index.js'
 
 class TestEncryption {
   private values = new Map<string, { payload: object; purpose?: string; expiresAt?: number }>()
@@ -310,7 +310,7 @@ test('reset store keeps one token per email and consumes it once', async () => {
   assert.equal(rows.length, 0)
 })
 
-test('MustVerifyEmail mixin persists verification once', async () => {
+test('withEmailVerification mixin persists verification once', async () => {
   class UserModel {
     emailVerifiedAt: unknown = null
     saves = 0
@@ -320,7 +320,7 @@ test('MustVerifyEmail mixin persists verification once', async () => {
     }
   }
 
-  const User = MustVerifyEmail(UserModel)
+  const User = withEmailVerification(UserModel)
   const user = new User()
   assert.equal(user.hasVerifiedEmail(), false)
   await user.markEmailAsVerified()

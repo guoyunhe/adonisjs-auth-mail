@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 
-export interface MustVerifyEmailUser {
+export interface WithEmailVerificationUser {
   hasVerifiedEmail(): boolean
   markEmailAsVerified(): Promise<void>
 }
@@ -12,8 +12,8 @@ type ModelWithEmailVerifiedAt = {
 
 type ModelConstructor<T> = new (...args: any[]) => T
 
-export function MustVerifyEmail<TBase extends ModelConstructor<ModelWithEmailVerifiedAt>>(Base: TBase) {
-  return class extends Base implements MustVerifyEmailUser {
+export function withEmailVerification<TBase extends ModelConstructor<ModelWithEmailVerifiedAt>>(Base: TBase) {
+  return class extends Base implements WithEmailVerificationUser {
     hasVerifiedEmail() {
       return this.emailVerifiedAt != null
     }
