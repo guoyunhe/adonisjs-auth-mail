@@ -134,27 +134,23 @@ split by feature below.
 Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
 deployment.
 
-## Configuration
+## Email Verification
 
-Edit `config/auth_mail.ts` after installation:
+### Configuration
+
+Edit `emailVerification` in `config/auth_mail.ts`:
 
 | Option | Purpose |
 | --- | --- |
-| `emailVerification` | Groups `expiresIn` (default: 24 hours), `path` (with a `:token` placeholder), and template `subject`, `htmlView` and `textView`. |
-| `passwordReset` | Groups `expiresIn` (default: 1 hour), `throttle` (default: 60 seconds), `path` (with a `:token` placeholder) and template views. The package adds the email query parameter, automatically loads `#models/password_reset`, persists hashes, throttles emails and atomically consumes unexpired tokens. Expiry uses `created_at`. |
+| `expiresIn` | Token lifetime (default: `24h`); uses AdonisJS encryption duration formats such as `1d`, `12h`, or `5m`. |
+| `path` | Verification URL path containing the `:token` placeholder. |
+| `template` | Email `subject`, `htmlView`, and `textView`. |
 
-The services use the application's `app.appKey` to sign verification tokens and `app.url` to
-build absolute email links; neither needs to be set in `config/auth_mail.ts`.
+Verification tokens use purpose-bound AdonisJS encryption and the application's `app.appKey`.
+The service uses `app.appUrl` to build absolute links. Configure the default mailer and sender in
+`config/mail.ts`; these settings are not part of `config/auth_mail.ts`.
 
-Both package services use the configured AdonisJS mail service directly. Configure the default
-mailer and sender address in `config/mail.ts` as usual; no mailer or sender fields are needed in
-`config/auth_mail.ts`.
-
-The default verification link opens the generated `GET /email/verify/:token` action. The generated
-reset URL points to `/password/reset/:token?email=...`; set `passwordReset.path` to your frontend
-page if it uses another route, keeping the `:token` placeholder.
-
-## Email Verification
+### Routes and middleware
 
 Register the generated send and verify actions in `start/routes.ts`. Sending a verification email
 requires an authenticated user; the link target from `emailVerification.path` must resolve to the
@@ -178,11 +174,28 @@ router.get('/account', [AccountController, 'show'])
 ```
 
 The generated verification URL is `GET /email/verify/:token`. The verification route does not
-require an authenticated session because the signed token identifies and verifies its owner.
+require an authenticated session because the encrypted token identifies and verifies its owner.
 `verified` returns 403 for authenticated users without a verified email; customize it to redirect
 browser users to your verification notice page if needed.
 
 ## Password Reset
+
+### Configuration
+
+Edit `passwordReset` in `config/auth_mail.ts`:
+
+| Option | Purpose |
+| --- | --- |
+| `expiresIn` | Token lifetime (default: `1h`); uses AdonisJS encryption duration formats such as `1d`, `12h`, or `5m`. |
+| `throttle` | Minimum seconds between reset emails to the same address (default: 60). |
+| `path` | Reset URL path containing the `:token` placeholder; the service adds the email query parameter. |
+| `template` | Email `subject`, `htmlView`, and `textView`. |
+
+Reset tokens use purpose-bound AdonisJS encryption and the application's `app.appKey`. The service
+uses `app.appUrl` to build absolute links, persists token hashes, applies email throttling, and
+atomically consumes each token once. Token expiry is enforced by encryption.
+
+### Routes
 
 Register the generated forgot-password and reset actions as public routes protected by a rate
 limiter. Also provide a GET page for the password-entry form: the generated email link targets
@@ -202,6 +215,8 @@ router.get('/password/reset/:token', [PasswordResetPageController, 'show'])
 router.post('/password/reset', [PasswordResetController, 'reset'])
   .use(authMailThrottle)
 ```
+
+### Reset form
 
 `PasswordResetPageController` is application-specific; create a form or frontend route that reads
 the `token` route parameter and `email` query parameter, then submits `email`, `token` and `password`

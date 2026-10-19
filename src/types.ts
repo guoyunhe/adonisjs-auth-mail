@@ -12,23 +12,6 @@ export interface MailableUser {
   locale?: string
 }
 
-/**
- * Minimal shape of the @adonisjs/mail service (`mail.send`).
- */
-export interface MailSender {
-  send(callback: (message: MailMessage) => void | Promise<void>): Promise<unknown>
-}
-
-export interface MailMessage {
-  to(address: string): this
-  from?(address: string): this
-  subject(subject: string): this
-  text?(content: string): this
-  html?(content: string): this
-  textView(template: string, data?: object): this
-  htmlView(template: string, data?: object): this
-}
-
 /** One current reset token per email address (the `password_resets` table). */
 export interface PasswordResetRecord {
   email: string
@@ -40,12 +23,7 @@ export interface PasswordResetRecord {
 export interface PasswordResetStore {
   create(record: PasswordResetRecord): Promise<void>
   hasRecent(email: string, since: Date): Promise<boolean>
-  consume(email: string, token: string, validSince: Date): Promise<boolean>
-}
-
-export interface AuthMailUserProvider<User extends MailableUser = MailableUser> {
-  findById(id: string): Promise<User | null>
-  findByEmail(email: string): Promise<User | null>
+  consume(email: string, token: string): Promise<boolean>
 }
 
 export interface AuthMailServiceUser extends MailableUser {
@@ -88,8 +66,8 @@ export interface MailTemplate {
 }
 
 export interface EmailVerificationConfig {
-  /** Verification token lifetime in seconds. Defaults to 24 hours. */
-  expiresIn?: number
+  /** Same duration value accepted by AdonisJS encryption, such as `1d`, `12h`, or `5m`. */
+  expiresIn?: number | string
 
   /** Absolute-path URL pattern. It must include the `:token` placeholder. */
   path: string
@@ -99,8 +77,8 @@ export interface EmailVerificationConfig {
 }
 
 export interface PasswordResetConfig {
-  /** Reset token lifetime in seconds. Defaults to 1 hour. */
-  expiresIn?: number
+  /** Same duration value accepted by AdonisJS encryption, such as `1d`, `12h`, or `5m`. */
+  expiresIn?: number | string
 
   /** Minimum seconds between reset emails to the same address. Defaults to 60. */
   throttle?: number

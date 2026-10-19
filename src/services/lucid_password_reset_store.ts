@@ -21,12 +21,11 @@ export class LucidPasswordResetStore implements PasswordResetStore {
     )
   }
 
-  async consume(email: string, token: string, validSince: Date) {
+  async consume(email: string, token: string) {
     const deleted = await this.model
       .query()
       .where('email', email)
       .where('token', token)
-      .where('createdAt', '>', DateTime.fromJSDate(validSince))
       .delete()
     return deleted > 0
   }

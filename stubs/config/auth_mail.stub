@@ -6,8 +6,8 @@ import { defineConfig } from 'adonisjs-auth-mail'
 const authMailConfig = defineConfig({
   /** Settings for email verification links and messages. */
   emailVerification: {
-    /** Verification token lifetime in seconds. Defaults to 24 hours. */
-    expiresIn: 60 * 60 * 24,
+    /** Same duration value accepted by AdonisJS encryption, such as '1d', '12h', or '5m'. */
+    expiresIn: '24h',
 
     /** URL path containing the :token placeholder. */
     path: '/email/verify/:token',
@@ -27,8 +27,8 @@ const authMailConfig = defineConfig({
 
   /** Settings and model for password reset links and messages. */
   passwordReset: {
-    /** Reset token lifetime in seconds. Defaults to 1 hour. */
-    expiresIn: 60 * 60,
+    /** Same duration value accepted by AdonisJS encryption, such as '1d', '12h', or '5m'. */
+    expiresIn: '1h',
 
     /** Minimum seconds between reset emails to the same address. Defaults to 60. */
     throttle: 60,
