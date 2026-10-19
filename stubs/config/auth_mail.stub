@@ -18,10 +18,10 @@ const authMailConfig = defineConfig({
       subject: 'Verify your email address',
 
       /** Edge template for the HTML email body. */
-      htmlView: 'mails/verify_email',
+      htmlView: 'mails/email_verification',
 
       /** Edge template for the plain-text email body. */
-      textView: 'mails/verify_email_text',
+      textView: 'mails/email_verification_text',
     },
   },
 
@@ -42,10 +42,10 @@ const authMailConfig = defineConfig({
       subject: 'Reset your password',
 
       /** Edge template for the HTML email body. */
-      htmlView: 'mails/reset_password',
+      htmlView: 'mails/password_reset',
 
       /** Edge template for the plain-text email body. */
-      textView: 'mails/reset_password_text',
+      textView: 'mails/password_reset_text',
     },
   },
 })

@@ -73,10 +73,10 @@ using `user.locale`.
 
 Installation generates English Edge templates for HTML and plain-text versions of both messages:
 
-- `resources/views/mails/verify_email.edge`
-- `resources/views/mails/verify_email_text.edge`
-- `resources/views/mails/reset_password.edge`
-- `resources/views/mails/reset_password_text.edge`
+- `resources/views/mails/email_verification.edge`
+- `resources/views/mails/email_verification_text.edge`
+- `resources/views/mails/password_reset.edge`
+- `resources/views/mails/password_reset_text.edge`
 
 The generated `config/auth_mail.ts` uses `htmlView` and `textView` to render these templates. Edit
 them to match your product's wording and design, or select localized templates through the

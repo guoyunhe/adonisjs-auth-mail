@@ -366,13 +366,13 @@ test('renders configured message templates with user data', async () => {
   user.locale = 'zh-CN'
   authMailConfig.emailVerification.template = {
     subject: '验证邮箱',
-    htmlView: 'mails/verify_email_zh',
-    textView: 'mails/verify_email_zh_text',
+    htmlView: 'mails/email_verification_zh',
+    textView: 'mails/email_verification_zh_text',
   }
   await emailVerificationService.sendVerification(user)
   assert.equal(sent[0].subjectLine, '验证邮箱')
-  assert.equal(sent[0].htmlTemplate, 'mails/verify_email_zh')
-  assert.equal(sent[0].textTemplate, 'mails/verify_email_zh_text')
+  assert.equal(sent[0].htmlTemplate, 'mails/email_verification_zh')
+  assert.equal(sent[0].textTemplate, 'mails/email_verification_zh_text')
   assert.equal(sent[0].htmlData.user, user)
   assert.match(sent[0].textData.url, /^https:\/\/x\/v\//)
 })

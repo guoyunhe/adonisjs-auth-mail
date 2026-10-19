@@ -1,5 +1,5 @@
 {{{
-  exports({ to: app.makePath('resources/views/mails/verify_email_text.edge') })
+  exports({ to: app.makePath('resources/views/mails/email_verification_text.edge') })
 }}}
 Verify your email address
 

@@ -30,10 +30,10 @@ export async function configure(command: ConfigureCommand) {
     'controllers/password_reset_controller.stub',
     'migrations/add_email_verified_at_to_users_table.stub',
     'migrations/create_password_resets_table.stub',
-    'views/mails/verify_email.stub',
-    'views/mails/verify_email_text.stub',
-    'views/mails/reset_password.stub',
-    'views/mails/reset_password_text.stub',
+    'views/mails/email_verification.stub',
+    'views/mails/email_verification_text.stub',
+    'views/mails/password_reset.stub',
+    'views/mails/password_reset_text.stub',
   ]
   for (const stub of stubs) {
     await codemods.makeUsingStub(stubsRoot, stub, { timestamp })
