@@ -134,6 +134,26 @@ split by feature below.
 Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
 deployment.
 
+## Configuration
+
+Edit `config/auth_mail.ts` after installation:
+
+| Option | Purpose |
+| --- | --- |
+| `emailVerification` | Groups `expiresIn` (default: 24 hours), `path` (with a `:token` placeholder), and template `subject`, `htmlView` and `textView`. |
+| `passwordReset` | Groups `expiresIn` (default: 1 hour), `throttle` (default: 60 seconds), `path` (with a `:token` placeholder) and template views. The package adds the email query parameter, automatically loads `#models/password_reset`, persists hashes, throttles emails and atomically consumes unexpired tokens. Expiry uses `created_at`. |
+
+The services use the application's `app.appKey` to sign verification tokens and `app.url` to
+build absolute email links; neither needs to be set in `config/auth_mail.ts`.
+
+Both package services use the configured AdonisJS mail service directly. Configure the default
+mailer and sender address in `config/mail.ts` as usual; no mailer or sender fields are needed in
+`config/auth_mail.ts`.
+
+The default verification link opens the generated `GET /email/verify/:token` action. The generated
+reset URL points to `/password/reset/:token?email=...`; set `passwordReset.path` to your frontend
+page if it uses another route, keeping the `:token` placeholder.
+
 ## Email Verification
 
 Register the generated send and verify actions in `start/routes.ts`. Sending a verification email
@@ -187,22 +207,3 @@ router.post('/password/reset', [PasswordResetController, 'reset'])
 the `token` route parameter and `email` query parameter, then submits `email`, `token` and `password`
 to `POST /password/reset`. The reset controller validates the request and updates the user's
 password after the token has been atomically consumed.
-
-## Configuration
-
-Edit `config/auth_mail.ts` after installation:
-
-| Option | Purpose |
-| --- | --- |
-| `secret` | Signs verification tokens. Keep it set to `APP_KEY`; changing it invalidates outstanding verification links. |
-| `appUrl` | Base URL used to turn configured paths into absolute links. |
-| `emailVerification` | Groups `expiresIn` (default: 24 hours), `path` (with a `:token` placeholder), and template `subject`, `htmlView` and `textView`. |
-| `passwordReset` | Groups `expiresIn` (default: 1 hour), `throttle` (default: 60 seconds), `path` (with a `:token` placeholder) and template views. The package adds the email query parameter, automatically loads `#models/password_reset`, persists hashes, throttles emails and atomically consumes unexpired tokens. Expiry uses `created_at`. |
-
-Both package services use the configured AdonisJS mail service directly. Configure the default
-mailer and sender address in `config/mail.ts` as usual; no mailer or sender fields are needed in
-`config/auth_mail.ts`.
-
-The default verification link opens the generated `GET /email/verify/:token` action. The generated
-reset URL points to `/password/reset/:token?email=...`; set `passwordReset.path` to your frontend
-page if it uses another route, keeping the `:token` placeholder.

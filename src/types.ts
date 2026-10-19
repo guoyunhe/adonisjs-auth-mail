@@ -143,12 +143,6 @@ export interface ResetPasswordCredentials extends ResetLinkCredentials {
 }
 
 export interface AuthMailConfig {
-  /** Secret used to sign email verification tokens, usually `env.get('APP_KEY')`. */
-  secret: string
-
-  /** Base URL prefixed to emailVerification.path and passwordReset.path. */
-  appUrl: string
-
   /** Settings for email verification links and messages. */
   emailVerification: EmailVerificationConfig
 

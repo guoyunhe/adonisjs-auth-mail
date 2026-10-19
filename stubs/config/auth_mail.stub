@@ -1,16 +1,9 @@
 {{{
   exports({ to: app.configPath('auth_mail.ts') })
 }}}
-import env from '#start/env'
 import { defineConfig } from 'adonisjs-auth-mail'
 
 const authMailConfig = defineConfig({
-  /** Secret used to sign email verification tokens. Keep this set to APP_KEY. */
-  secret: env.get('APP_KEY'),
-
-  /** Base URL prefixed to emailVerification.path and passwordReset.path. */
-  appUrl: env.get('APP_URL'),
-
   /** Settings for email verification links and messages. */
   emailVerification: {
     /** Verification token lifetime in seconds. Defaults to 24 hours. */

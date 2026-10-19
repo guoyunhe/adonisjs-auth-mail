@@ -27,8 +27,6 @@ function setup(options: { expiresIn?: number; throttle?: number } = {}) {
   }
   const am = new AuthMail(
     {
-      secret: 's3cret',
-      appUrl: 'https://x',
       emailVerification: {
         path: '/v/:token',
         template: { subject: 'Verify email', htmlView: 'verify', textView: 'verify-text' },
@@ -48,6 +46,7 @@ function setup(options: { expiresIn?: number; throttle?: number } = {}) {
       },
     },
     mailer,
+    { secret: 's3cret', appUrl: 'https://x' },
     {
       async create(record) {
         const index = rows.findIndex((row) => row.email === record.email)
@@ -129,8 +128,6 @@ test('reset store keeps one token per email and consumes it once', async () => {
   const sent: any[] = []
   const am = new AuthMail(
     {
-      secret: 's',
-      appUrl: 'https://x',
       emailVerification: {
         path: '/v/:token',
         template: { subject: 'Verify', htmlView: 'verify', textView: 'verify-text' },
@@ -157,6 +154,7 @@ test('reset store keeps one token per email and consumes it once', async () => {
         sent.push(message)
       },
     },
+    { secret: 's', appUrl: 'https://x' },
     {
         async create(r) {
           const index = rows.findIndex((row) => row.email === r.email)
@@ -253,8 +251,6 @@ test('propagates mailer failures', async () => {
   const { user } = setup()
   const am = new AuthMail(
     {
-      secret: 's',
-      appUrl: 'https://x',
       emailVerification: {
         path: '/verify/:token',
         template: { subject: 'Verify', htmlView: 'verify', textView: 'verify-text' },
@@ -268,7 +264,8 @@ test('propagates mailer failures', async () => {
       async findById(id) { return String(user.id) === id ? user : null },
       async findByEmail(email) { return email === user.email ? user : null },
     },
-    { async send() { throw new Error('mail transport unavailable') } }
+    { async send() { throw new Error('mail transport unavailable') } },
+    { secret: 's', appUrl: 'https://x' }
   )
   await assert.rejects(am.sendVerification(user), /mail transport unavailable/)
 })
@@ -278,8 +275,6 @@ test('renders configured message templates with user data', async () => {
   user.locale = 'zh-CN'
   const am = new AuthMail(
     {
-      secret: 's',
-      appUrl: 'https://x',
       emailVerification: {
         path: '/v/:token',
         template: {
@@ -308,7 +303,8 @@ test('renders configured message templates with user data', async () => {
         await callback(message)
         sent.push(message)
       },
-    }
+    },
+    { secret: 's', appUrl: 'https://x' }
   )
   await am.sendVerification(user)
   assert.equal(sent[0].subjectLine, '验证邮箱')

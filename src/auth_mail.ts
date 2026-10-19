@@ -23,17 +23,18 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     private config: AuthMailConfig,
     private users: AuthMailUserProvider<User>,
     private mailer: MailSender,
+    private runtime: { secret: string; appUrl: string },
     private resetStore?: PasswordResetStore
   ) {}
 
   async sendVerification(user: User) {
     const expiresIn = this.config.emailVerification.expiresIn ?? 86400
-    const token = createToken(this.config.secret, 'verify-email', user.id, user.email, expiresIn)
+    const token = createToken(this.runtime.secret, 'verify-email', user.id, user.email, expiresIn)
     if (!this.config.emailVerification.path.includes(':token')) {
       throw new Error('emailVerification.path must include a :token placeholder')
     }
     const path = this.config.emailVerification.path.replace(':token', encodeURIComponent(token))
-    const url = new URL(path, this.config.appUrl).toString()
+    const url = new URL(path, this.runtime.appUrl).toString()
     await this.mailer.send((message) => {
       message.to(user.email)
       message
@@ -53,7 +54,7 @@ export class AuthMail<User extends MailableUser = MailableUser> {
     if (
       !user ||
       user.emailVerifiedAt ||
-      !verifyToken(this.config.secret, 'verify-email', token, user.email)
+      !verifyToken(this.runtime.secret, 'verify-email', token, user.email)
     ) return null
     await markEmailAsVerified(user)
     return user
@@ -74,7 +75,7 @@ export class AuthMail<User extends MailableUser = MailableUser> {
       throw new Error('passwordReset.path must include a :token placeholder')
     }
     const path = this.config.passwordReset.path.replace(':token', encodeURIComponent(token))
-    const url = new URL(path, this.config.appUrl)
+    const url = new URL(path, this.runtime.appUrl)
     url.searchParams.set('email', user.email)
     await this.mailer.send((message) => {
       message.to(user.email)
