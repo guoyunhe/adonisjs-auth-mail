@@ -83,6 +83,27 @@ If your model already uses other mixins, include `withEmailVerification` in its 
 sets it once and saves the user. The generated `verified` middleware is registered in
 `start/kernel.ts`; use it after authentication to protect routes.
 
+### Expose verification status to the frontend (optional)
+
+To let the frontend show an email verification reminder, include `emailVerifiedAt` in the user
+data returned by your `UserTransformer`. For example, add this field to the object returned by
+its `transform` method:
+
+```ts
+emailVerifiedAt: user.emailVerifiedAt?.toISO() ?? null,
+```
+
+The frontend can show a reminder when this field is `null`:
+
+```ts
+if (user.emailVerifiedAt === null) {
+  // Show a reminder to verify the email address.
+}
+```
+
+This field is optional and intended for presentation; continue enforcing access to protected
+routes with the `verified` middleware on the server.
+
 Register the generated controller actions in `start/routes.ts`. Route configuration is split by
 feature below.
 
