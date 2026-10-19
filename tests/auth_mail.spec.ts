@@ -74,7 +74,7 @@ const mailer = {
 
 const authMailConfig: any = {
   emailVerification: {
-    path: '/email/verify/:token',
+    path: '/email/verification/:token',
     template: {
       subject: 'Verify email',
       htmlView: 'verify',

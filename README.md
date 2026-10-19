@@ -143,24 +143,24 @@ router.post('/email/verify/send', [EmailVerificationController, 'send'])
 
 // Render a confirmation screen using your app's frontend (React, Vue, Edge, etc.).
 // This GET handler must not verify the email address.
-router.get('/email/verify/:token', [EmailVerificationPageController, 'show'])
+router.get('/email/verification/:token', [EmailVerificationPageController, 'show'])
 
 // Verify the email address only after the user submits the confirmation form.
-router.post('/email/verify/:token', [EmailVerificationController, 'verify'])
+router.post('/email/verification/:token', [EmailVerificationController, 'verify'])
 
 // Use `verified` middleware to restrict unverified users from creating posts
 router.post('/post', [AccountController, 'store'])
   .use([middleware.auth(), middleware.verified()])
 ```
 
-The package does not generate a confirmation page. Implement `GET /email/verify/:token` using your
-application's frontend stack. It should display a confirmation action without changing verification
-state, then call `POST /email/verify/:token` only after the user confirms. For example, a frontend
-page can use this handler for its confirmation button:
+The package does not generate a confirmation page. Implement `GET /email/verification/:token` using
+your application's frontend stack. It should display a confirmation action without changing
+verification state, then call `POST /email/verification/:token` only after the user confirms. For
+example, a frontend page can use this handler for its confirmation button:
 
 ```ts
 async function confirmEmailVerification(token: string) {
-  const response = await fetch(`/email/verify/${encodeURIComponent(token)}`, {
+  const response = await fetch(`/email/verification/${encodeURIComponent(token)}`, {
     method: 'POST',
   })
   if (!response.ok) throw new Error('Unable to verify email address')
@@ -286,9 +286,9 @@ import { authMailThrottle } from '#start/limiter'
 
 router.post('/email/verify/send', [EmailVerificationController, 'send'])
   .use(authMailThrottle)
-router.get('/email/verify/:token', [EmailVerificationPageController, 'show'])
+router.get('/email/verification/:token', [EmailVerificationPageController, 'show'])
   .use(authMailThrottle)
-router.post('/email/verify/:token', [EmailVerificationController, 'verify'])
+router.post('/email/verification/:token', [EmailVerificationController, 'verify'])
   .use(authMailThrottle)
 router.post('/password/forgot', [PasswordResetController, 'forgot'])
   .use(authMailThrottle)
