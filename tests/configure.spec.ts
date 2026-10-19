@@ -21,7 +21,7 @@ test('configure generates all stubs and env', async () => {
       }
     },
   })
-  assert.equal(made.length, 12)
+  assert.equal(made.length, 11)
   assert.deepEqual(envVariables, { APP_URL: 'http://localhost:3333' })
   assert.deepEqual(envValidations, { APP_URL: 'Env.schema.string()' })
   for (const s of made) assert.ok(existsSync(join(stubsRoot, s)), `Missing stub: ${s}`)
@@ -31,8 +31,9 @@ test('configure generates all stubs and env', async () => {
   assert.ok(made.includes('views/mails/verify_email_text.stub'))
   assert.ok(made.includes('views/mails/reset_password.stub'))
   assert.ok(made.includes('views/mails/reset_password_text.stub'))
-  assert.ok(made.includes('validators/forgot_password_validator.stub'))
-  assert.ok(made.includes('validators/reset_password_validator.stub'))
+  assert.ok(made.includes('validators/password_reset.stub'))
+  assert.ok(!made.some((s) => s.includes('forgot_password_validator.stub')))
+  assert.ok(!made.some((s) => s.includes('reset_password_validator.stub')))
   assert.deepEqual(middleware, [
     { stack: 'named', name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
   ])

@@ -25,8 +25,7 @@ export async function configure(command: ConfigureCommand) {
   const stubs = [
     'config/auth_mail.stub',
     'models/password_reset.stub',
-    'validators/forgot_password_validator.stub',
-    'validators/reset_password_validator.stub',
+    'validators/password_reset.stub',
     'controllers/email_verification_controller.stub',
     'controllers/password_reset_controller.stub',
     'migrations/add_email_verified_at_to_users_table.stub',
