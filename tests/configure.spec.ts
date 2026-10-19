@@ -7,14 +7,10 @@ import { configure, stubsRoot } from '../src/index.js'
 test('configure generates all stubs and env', async () => {
   const made: string[] = []
   const middleware: { stack: string; name: string; path: string }[] = []
-  let envVariables: Record<string, string | number | boolean> = {}
-  let envValidations: Record<string, string> = {}
   await configure({
     async createCodemods() {
       return {
         async makeUsingStub(_root: string, stub: string) { made.push(stub) },
-        async defineEnvVariables(variables) { envVariables = variables },
-        async defineEnvValidations({ variables }) { envValidations = variables },
         async registerMiddleware(stack, entries) {
           for (const entry of entries) middleware.push({ stack, ...entry })
         },
@@ -22,8 +18,6 @@ test('configure generates all stubs and env', async () => {
     },
   })
   assert.equal(made.length, 11)
-  assert.deepEqual(envVariables, { APP_URL: 'http://localhost:3333' })
-  assert.deepEqual(envValidations, { APP_URL: 'Env.schema.string()' })
   for (const s of made) assert.ok(existsSync(join(stubsRoot, s)), `Missing stub: ${s}`)
   assert.ok(!made.some((s) => s.includes('email_verifications')))
   assert.ok(made.includes('views/mails/email_verification.stub'))

@@ -5,8 +5,6 @@ import { fileURLToPath } from 'node:url'
 interface ConfigureCommand {
   createCodemods(): Promise<{
     makeUsingStub(stubsRoot: string, stubPath: string, data: Record<string, unknown>): Promise<unknown>
-    defineEnvVariables(vars: Record<string, string | number | boolean>): Promise<void>
-    defineEnvValidations(validations: { variables: Record<string, string>; leadingComment?: string }): Promise<void>
     registerMiddleware(
       stack: 'server' | 'router' | 'named',
       middleware: { name: string; path: string }[]
@@ -39,11 +37,6 @@ export async function configure(command: ConfigureCommand) {
     await codemods.makeUsingStub(stubsRoot, stub, { timestamp })
   }
 
-  await codemods.defineEnvVariables({ APP_URL: 'http://localhost:3333' })
-  await codemods.defineEnvValidations({
-    leadingComment: 'Variables for adonisjs-auth-mail',
-    variables: { APP_URL: 'Env.schema.string()' },
-  })
   await codemods.registerMiddleware('named', [
     { name: 'verified', path: 'adonisjs-auth-mail/verified_middleware' },
   ])

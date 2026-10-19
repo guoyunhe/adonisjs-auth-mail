@@ -102,37 +102,31 @@ node ace add @vinejs/vine
 node ace add adonisjs-auth-mail
 ```
 
-This copies the config, reset model, controllers, password validators, migrations and email views
-into your app, registers the `verified` middleware alias, and defines `APP_URL`.
+The command creates these files in your application:
+
+- `config/auth_mail.ts`
+- `app/models/password_reset.ts`
+- `app/validators/password_reset.ts`
+- `app/controllers/email_verification_controller.ts`
+- `app/controllers/password_reset_controller.ts`
+- `database/migrations/<timestamp>_add_email_verified_at_to_users_table.ts`
+- `database/migrations/<timestamp>_create_password_resets_table.ts`
+- `resources/views/mails/email_verification.edge`
+- `resources/views/mails/email_verification_text.edge`
+- `resources/views/mails/password_reset.edge`
+- `resources/views/mails/password_reset_text.edge`
+
+It also updates these existing files:
+
+- `start/kernel.ts` — registers the `verified` middleware alias
+
 Import email verification and password reset services directly from
 `adonisjs-auth-mail/services/email_verification` and
 `adonisjs-auth-mail/services/password_reset`. Then register routes and run `node ace migration:run`.
 Running the migrations generates `database/schema.ts`, which the generated models import.
 
-Register the generated controller actions in `start/routes.ts`. Protect verification-email sending
-with your app's auth middleware. Since these endpoints can send email or change credentials, add
-rate limiting before exposing them publicly:
-
-```sh
-node ace add @adonisjs/limiter
-```
-
-For example, after configuring a `throttle` middleware in `start/limiter.ts`:
-
-```ts
-// start/limiter.ts
-import limiter from '@adonisjs/limiter/services/main'
-
-export const authMailThrottle = limiter.define('auth-mail', (ctx) =>
-  limiter.allowRequests(5).every('1 minute').usingKey(ctx.request.ip())
-)
-```
-
-Use the limiter on public endpoints that send mail or change credentials. Route configuration is
-split by feature below.
-
-Tune limits per endpoint and deployment, and use the configured limiter store appropriate for your
-deployment.
+Register the generated controller actions in `start/routes.ts`. Route configuration is split by
+feature below.
 
 ## Email Verification
 
@@ -162,14 +156,16 @@ import router from '@adonisjs/core/services/router'
 import EmailVerificationController from '#controllers/email_verification_controller'
 import AccountController from '#controllers/account_controller'
 import { middleware } from '#start/kernel'
-import { authMailThrottle } from '#start/limiter'
 
+// Send a verification email to the authenticated user.
 router.post('/email/verify/send', [EmailVerificationController, 'send'])
-  .use([middleware.auth(), authMailThrottle])
-router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
-  .use(authMailThrottle)
+  .use(middleware.auth())
 
-router.get('/account', [AccountController, 'show'])
+// Verify the email address using the token from the email link.
+router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
+
+// Use `verified` middleware to restrict unverified users from creating posts
+router.post('/post', [AccountController, 'store'])
   .use([middleware.auth(), middleware.verified()])
 ```
 
@@ -177,6 +173,32 @@ The generated verification URL is `GET /email/verify/:token`. The verification r
 require an authenticated session because the encrypted token identifies and verifies its owner.
 `verified` returns 403 for authenticated users without a verified email; customize it to redirect
 browser users to your verification notice page if needed.
+
+### Verify email after registration (optional)
+
+```ts
+// app/controllers/new_account_controller.ts
+import User from '#models/user'
+import { signupValidator } from '#validators/user'
+import type { HttpContext } from '@adonisjs/core/http'
+import UserTransformer from '#transformers/user_transformer'
+import emailVerificationService from 'adonisjs-auth-mail/services/email_verification'
+
+export default class NewAccountController {
+  async store({ request, serialize }: HttpContext) {
+    const { fullName, email, password } = await request.validateUsing(signupValidator)
+
+    const user = await User.create({ fullName, email, password })
+    await emailVerificationService.sendVerification(user)
+
+    const token = await User.accessTokens.create(user)
+    return serialize({
+      user: UserTransformer.transform(user),
+      token: token.value!.release(),
+    })
+  }
+}
+```
 
 ## Password Reset
 
@@ -197,8 +219,9 @@ atomically consumes each token once. Token expiry is enforced by encryption.
 
 ### Routes
 
-Register the generated forgot-password and reset actions as public routes protected by a rate
-limiter. Also provide a GET page for the password-entry form: the generated email link targets
+Register the generated forgot-password and reset actions as public routes. Rate-limit them using
+your chosen application or upstream solution (see [Request Rate Limit](#request-rate-limit)).
+Also provide a GET page for the password-entry form: the generated email link targets
 `/password/reset/:token?email=...`, while the generated controller handles the POST submission.
 Keep both `email` and `token` when rendering/submitting the form.
 
@@ -206,14 +229,10 @@ Keep both `email` and `token` when rendering/submitting the form.
 import router from '@adonisjs/core/services/router'
 import PasswordResetController from '#controllers/password_reset_controller'
 import PasswordResetPageController from '#controllers/password_reset_page_controller'
-import { authMailThrottle } from '#start/limiter'
 
 router.post('/password/forgot', [PasswordResetController, 'forgot'])
-  .use(authMailThrottle)
 router.get('/password/reset/:token', [PasswordResetPageController, 'show'])
-  .use(authMailThrottle)
 router.post('/password/reset', [PasswordResetController, 'reset'])
-  .use(authMailThrottle)
 ```
 
 ### Reset form
@@ -222,3 +241,49 @@ router.post('/password/reset', [PasswordResetController, 'reset'])
 the `token` route parameter and `email` query parameter, then submits `email`, `token` and `password`
 to `POST /password/reset`. The reset controller validates the request and updates the user's
 password after the token has been atomically consumed.
+
+## Request Rate Limit
+
+Endpoints that send email or change credentials should be rate-limited before being exposed
+publicly. You can use an application middleware, an edge service such as Cloudflare, or both.
+Configure limits and storage according to your traffic and deployment.
+
+If you use AdonisJS Limiter, install it with:
+
+```sh
+node ace add @adonisjs/limiter
+```
+
+Then define a middleware in `start/limiter.ts` and attach it to relevant routes:
+
+```ts
+// start/limiter.ts
+import limiter from '@adonisjs/limiter/services/main'
+
+export const authMailThrottle = limiter.define('auth-mail', (ctx) =>
+  limiter.allowRequests(5).every('1 minute').usingKey(ctx.request.ip())
+)
+```
+
+Apply your chosen rate-limiting solution to public email-verification and password-reset
+endpoints. For example, when using the AdonisJS Limiter middleware:
+
+```ts
+// start/routes.ts
+import router from '@adonisjs/core/services/router'
+import EmailVerificationController from '#controllers/email_verification_controller'
+import PasswordResetController from '#controllers/password_reset_controller'
+import { authMailThrottle } from '#start/limiter'
+
+router.post('/email/verify/send', [EmailVerificationController, 'send'])
+  .use(authMailThrottle)
+router.get('/email/verify/:token', [EmailVerificationController, 'verify'])
+  .use(authMailThrottle)
+router.post('/password/forgot', [PasswordResetController, 'forgot'])
+  .use(authMailThrottle)
+router.post('/password/reset', [PasswordResetController, 'reset'])
+  .use(authMailThrottle)
+```
+
+If rate limiting is handled by an upstream service such as Cloudflare, configure the equivalent
+rules there instead; the application middleware is optional.
